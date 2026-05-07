@@ -188,7 +188,7 @@ Answer these when Partner Center opens the IARC rating questionnaire:
 | Does the app have location-based features? | **No** |
 | Does the app contain violence? | **No** |
 | Does the app contain sexual content? | **No** |
-| Does the app have in-app purchases? | **No** |
+| Does the app have in-app purchases? | **Yes** (Pro subscriptions: monthly, annual, lifetime via Microsoft Store IAP) |
 | Does the app collect personal data? | **No** (tokens stored locally only) |
 
 **Expected rating:** **PEGI 3 / Everyone (E)** — suitable for all ages.

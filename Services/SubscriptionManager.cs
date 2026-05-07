@@ -7,7 +7,7 @@ namespace StreamCommand.Services
 {
     public static class SubscriptionManager
     {
-        private static StoreContext _context;
+        private static StoreContext? _context;
 
         public static void Initialize(IntPtr hwnd)
         {

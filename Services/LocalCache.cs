@@ -25,7 +25,8 @@ namespace StreamCommand.Services
             var json = File.ReadAllText(FilePath);
             var data = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
 
-            return data?["productId"];
+            // Use TryGetValue so a missing or null "productId" key never throws KeyNotFoundException.
+            return data != null && data.TryGetValue("productId", out var val) ? val : null;
         }
     }
 }

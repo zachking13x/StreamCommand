@@ -8,8 +8,13 @@ namespace StreamCommand.Views
         public ProUpgradeWindow()
         {
             InitializeComponent();
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            Services.SubscriptionManager.Initialize(hwnd);
+            // Handle is IntPtr.Zero in the constructor — it only exists after the OS creates the window.
+            // SourceInitialized fires synchronously during Show/ShowDialog, before any content is visible.
+            SourceInitialized += (_, _) =>
+            {
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                Services.SubscriptionManager.Initialize(hwnd);
+            };
         }
 
         private async void Monthly_Click(object sender, RoutedEventArgs e)

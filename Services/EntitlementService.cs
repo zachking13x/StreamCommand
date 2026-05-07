@@ -19,23 +19,31 @@ namespace StreamCommand.Services
 
         public static async Task RefreshAsync()
         {
-            StoreAppLicense license = await _context.GetAppLicenseAsync();
-
-            foreach (var id in ProductIds)
+            try
             {
-                if (license.AddOnLicenses.TryGetValue(id, out StoreLicense addon))
+                StoreAppLicense license = await _context.GetAppLicenseAsync();
+
+                foreach (var id in ProductIds)
                 {
-                    if (addon.IsActive)
+                    if (license.AddOnLicenses.TryGetValue(id, out StoreLicense addon))
                     {
-                        IsPro = true;
-                        ActiveProductId = id;
-                        return;
+                        if (addon.IsActive)
+                        {
+                            IsPro = true;
+                            ActiveProductId = id;
+                            return;
+                        }
                     }
                 }
-            }
 
-            IsPro = false;
-            ActiveProductId = null;
+                IsPro = false;
+                ActiveProductId = null;
+            }
+            catch
+            {
+                // GetAppLicenseAsync throws COMException when the app runs outside the Store
+                // context (e.g. sideloaded during development). Leave IsPro at its cached value.
+            }
         }
     }
 }
