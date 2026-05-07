@@ -1,0 +1,148 @@
+<UserControl x:Class="StreamCommand.Views.GrowthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:StreamCommand.Models"
+             Background="{DynamicResource AppBackground}">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <DataTemplate x:Key="GoalTemplate" DataType="{x:Type models:GrowthGoal}">
+            <StackPanel Margin="0,0,0,14">
+                <Grid Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Label}"
+                                   Foreground="{DynamicResource PrimaryText}"
+                                   FontSize="13" FontWeight="Medium"
+                                   VerticalAlignment="Center"/>
+                        <Border CornerRadius="4" Padding="5,1" Margin="8,0,0,0"
+                                Background="{DynamicResource CardBackgroundAlt}">
+                            <TextBlock Text="{Binding Category}"
+                                       Foreground="{DynamicResource MutedText}"
+                                       FontSize="10"/>
+                        </Border>
+                        <Border CornerRadius="4" Padding="5,1" Margin="6,0,0,0"
+                                Background="#14401A"
+                                Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="✓ Complete" Foreground="#22C55E" FontSize="10"/>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <TextBlock Text="{Binding CurrentDisplay}"
+                                   Foreground="{DynamicResource PrimaryText}"
+                                   FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" VerticalAlignment="Center">
+                            <Run Text=" / "/>
+                            <Run Text="{Binding TargetDisplay, Mode=OneWay}"/>
+                            <Run Text=" "/>
+                            <Run Text="{Binding Unit, Mode=OneWay}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+                <!-- Mode=OneWay required — Percent is computed/read-only -->
+                <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100"/>
+                <TextBlock Text="{Binding PercentDisplay, Mode=OneWay}"
+                           Style="{StaticResource Muted}"
+                           HorizontalAlignment="Right"
+                           Margin="0,2,0,0"/>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" MaxWidth="1100">
+
+            <!-- Header -->
+            <Grid Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Growth" Style="{StaticResource SectionHeader}" FontSize="18"/>
+                    <TextBlock Text="Track your goals and milestones" Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                </StackPanel>
+                <Button Content="+ Add Goal"
+                        Style="{StaticResource PrimaryButton}"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Click="AddGoal_Click"/>
+            </Grid>
+
+            <!-- Add Goal Form (hidden by default) -->
+            <Border x:Name="AddGoalForm"
+                    Style="{StaticResource Card}"
+                    Margin="0,0,0,14"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="New Goal" Style="{StaticResource SectionHeader}" Margin="0,0,0,14"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="GOAL LABEL" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="GoalLabelInput" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="CATEGORY" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="GoalCategoryInput" Style="{StaticResource ModernComboBox}" SelectedIndex="0">
+                                <ComboBoxItem>Audience</ComboBoxItem>
+                                <ComboBoxItem>Revenue</ComboBoxItem>
+                                <ComboBoxItem>Consistency</ComboBoxItem>
+                                <ComboBoxItem>Engagement</ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="CURRENT VALUE" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="GoalCurrentInput" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="TARGET VALUE" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="GoalTargetInput" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="UNIT" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="GoalUnitInput" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Style="{StaticResource SecondaryButton}"
+                                Padding="16,8" Margin="0,0,8,0" Click="CancelGoal_Click"/>
+                        <Button Content="Save Goal" Style="{StaticResource PrimaryButton}"
+                                Padding="16,8" Click="SaveGoal_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Goals List -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <TextBlock Text="🎯" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Active Goals" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ItemsControl x:Name="GoalList" ItemTemplate="{StaticResource GoalTemplate}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Milestones -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <TextBlock Text="🏆" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Milestones" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <UniformGrid x:Name="MilestoneGrid" Columns="3" Rows="3"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

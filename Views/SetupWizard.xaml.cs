@@ -1,0 +1,179 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using StreamCommand.Services;
+
+namespace StreamCommand.Views;
+
+public partial class SetupWizard : Window
+{
+    private int _step = 1;
+    private readonly OBSWebSocketService _obsTest = new();
+
+    public SetupWizard()
+    {
+        InitializeComponent();
+        _obsTest.StateChanged += state => Dispatcher.Invoke(() => OnOBSTestResult(state));
+    }
+
+    // ── Navigation ───────────────────────────────────────────────────────────
+
+    private void Next_Click(object sender, RoutedEventArgs e)
+    {
+        if (_step < 4)
+            GoToStep(_step + 1);
+        else
+            Finish();
+    }
+
+    private void Back_Click(object sender, RoutedEventArgs e)
+    {
+        if (_step > 1) GoToStep(_step - 1);
+    }
+
+    private void Skip_Click(object sender, RoutedEventArgs e)
+    {
+        if (_step < 4)
+            GoToStep(_step + 1);   // skip Twitch or OBS step — always show the Done screen
+        else
+            Finish();
+    }
+
+    private void GoToStep(int step)
+    {
+        _step = step;
+
+        Step1.Visibility = step == 1 ? Visibility.Visible : Visibility.Collapsed;
+        Step2.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
+        Step3.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
+        Step4.Visibility = step == 4 ? Visibility.Visible : Visibility.Collapsed;
+
+        BackButton.Visibility = step > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        SkipButton.Visibility = step is 2 or 3 ? Visibility.Visible : Visibility.Collapsed;
+
+        NextButton.Content = step switch
+        {
+            1 => "Let's Go  →",
+            4 => "Open Stream Command  →",
+            _ => "Next  →"
+        };
+
+        if (step == 4)
+        {
+            SaveAndBuildSummary();
+            SkipButton.Visibility = Visibility.Collapsed;
+        }
+
+        // Colour the step dots
+        UpdateDots();
+    }
+
+    private void UpdateDots()
+    {
+        var accent = (SolidColorBrush)FindResource("AccentBrush");
+        var done   = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+        var idle   = (SolidColorBrush)FindResource("BorderBrush");
+
+        SetDot(Dot1, Dot1.Child as TextBlock, 1, accent, done, idle);
+        SetDot(Dot2, Dot2Text, 2, accent, done, idle);
+        SetDot(Dot3, Dot3Text, 3, accent, done, idle);
+        SetDot(Dot4, Dot4Text, 4, accent, done, idle);
+
+        Line2.Fill = _step > 2 ? done : idle;
+        Line3.Fill = _step > 3 ? done : idle;
+    }
+
+    private void SetDot(Border dot, TextBlock? text, int dotStep, Brush accent, Brush done, Brush idle)
+    {
+        if (_step == dotStep)
+        {
+            dot.Background = accent;
+            if (text != null) { text.Foreground = Brushes.White; text.Text = dotStep.ToString(); }
+        }
+        else if (_step > dotStep)
+        {
+            dot.Background = done;
+            if (text != null) { text.Foreground = Brushes.White; text.Text = "✓"; }
+        }
+        else
+        {
+            dot.Background = idle;
+            if (text != null) { text.Foreground = (Brush)FindResource("MutedText"); text.Text = dotStep.ToString(); }
+        }
+    }
+
+    // ── Save + Summary ───────────────────────────────────────────────────────
+
+    private void SaveAndBuildSummary()
+    {
+        var s = SettingsService.Load();
+
+        // Save whatever the user entered in steps 2 & 3
+        if (!string.IsNullOrWhiteSpace(UsernameBox.Text))
+            s.TwitchUsername = UsernameBox.Text.Trim();
+        if (ChatTokenBox.Password.Length > 0)
+            s.TwitchChatToken = ChatTokenBox.Password;
+        if (OBSPasswordBox.Password.Length > 0)
+            s.OBSWebSocketPassword = OBSPasswordBox.Password;
+        if (int.TryParse(OBSPortBox.Text, out var port))
+            s.OBSWebSocketPort = port;
+        s.SetupComplete = true;
+
+        SettingsService.Save(s);
+
+        // Build a human-friendly summary
+        var parts = new System.Collections.Generic.List<string>();
+        if (!string.IsNullOrWhiteSpace(s.TwitchUsername)) parts.Add($"Twitch: @{s.TwitchUsername}");
+        if (!string.IsNullOrWhiteSpace(s.TwitchChatToken)) parts.Add("Chat token saved");
+        if (!string.IsNullOrWhiteSpace(s.OBSWebSocketPassword) || s.OBSWebSocketPort != 4455)
+            parts.Add($"OBS WebSocket on port {s.OBSWebSocketPort}");
+
+        SetupSummary.Text = parts.Count > 0
+            ? string.Join("  ·  ", parts) + "\n\nYou can update anything in Settings at any time."
+            : "You skipped setup — no worries!\nYou can add your credentials in Settings at any time.";
+    }
+
+    private void Finish()
+    {
+        SaveAndBuildSummary();
+        DialogResult = true;
+        Close();
+    }
+
+    // ── OBS Test ─────────────────────────────────────────────────────────────
+
+    private async void TestOBS_Click(object sender, RoutedEventArgs e)
+    {
+        TestOBSButton.IsEnabled = false;
+        OBSTestResult.Text = "Testing…";
+        OBSTestResult.Foreground = (Brush)FindResource("MutedText");
+
+        int.TryParse(OBSPortBox.Text, out var port);
+        if (port == 0) port = 4455;
+
+        await _obsTest.ConnectAsync("localhost", port, OBSPasswordBox.Password);
+        TestOBSButton.IsEnabled = true;
+    }
+
+    private void OnOBSTestResult(OBSState state)
+    {
+        switch (state)
+        {
+            case OBSState.Connected:
+                OBSTestResult.Text       = "✓  OBS connected successfully!";
+                OBSTestResult.Foreground = (Brush)FindResource("SuccessBrush");
+                _ = _obsTest.DisconnectAsync();
+                break;
+            case OBSState.Error:
+                OBSTestResult.Text       = "✗  " + _obsTest.StatusMessage.Replace("OBS: ", "");
+                OBSTestResult.Foreground = (Brush)FindResource("DangerBrush");
+                break;
+        }
+    }
+
+    // ── External links ───────────────────────────────────────────────────────
+
+    private void OpenTMI_Click(object sender, RoutedEventArgs e)
+        => AppLaunchService.OpenUrl("https://twitchapps.com/tmi/");
+}

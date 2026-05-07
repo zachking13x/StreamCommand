@@ -1,0 +1,141 @@
+<UserControl x:Class="StreamCommand.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource AppBackground}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" MaxWidth="1100">
+
+            <!-- Ready to Stream Banner -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Ready to Stream?" Style="{StaticResource SectionHeader}" FontSize="18"/>
+                        <TextBlock Text="Launch your stream with one click and manage everything from here."
+                                   Style="{StaticResource Muted}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="▶   Go Live"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="20,10"
+                            FontSize="14"
+                            Click="GoLive_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- Stats Row -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Live Viewers -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,7,0">
+                    <StackPanel>
+                        <TextBlock Text="👥  LIVE VIEWERS" Style="{StaticResource Label}"/>
+                        <TextBlock x:Name="LiveViewersText" Text="—"
+                                   Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock Text="Not streaming" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Followers -->
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0">
+                    <StackPanel>
+                        <TextBlock Text="♥  FOLLOWERS" Style="{StaticResource Label}"/>
+                        <TextBlock Text="12,894" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock Text="↑ +24 today" Foreground="{DynamicResource SuccessBrush}"
+                                   FontSize="12" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Chat Messages -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="7,0">
+                    <StackPanel>
+                        <TextBlock Text="💬  CHAT MESSAGES" Style="{StaticResource Label}"/>
+                        <TextBlock Text="—" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock Text="Not streaming" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Streams This Month -->
+                <Border Grid.Column="3" Style="{StaticResource Card}" Margin="7,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="📺  STREAMS THIS MONTH" Style="{StaticResource Label}"/>
+                        <TextBlock Text="2" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock Text="May 2026" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Chart + Upcoming -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Viewer Chart -->
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Viewer Count" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
+                        <Canvas x:Name="ViewerChart" Height="160"
+                                ClipToBounds="True" Background="Transparent"
+                                Loaded="ViewerChart_Loaded" SizeChanged="ViewerChart_SizeChanged"/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="0m" Style="{StaticResource Muted}" HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Column="1" Text="5m" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="10m" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="3" Text="15m" Style="{StaticResource Muted}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Upcoming Streams -->
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <TextBlock Text="Upcoming Streams" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="View all" Foreground="{DynamicResource AccentLight}"
+                                       FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Cursor="Hand"/>
+                        </Grid>
+
+                        <StackPanel x:Name="UpcomingList"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Quick Launch -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Quick Launch" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="Opens in browser tab" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="Manage" Foreground="{DynamicResource AccentLight}"
+                                   FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                   Cursor="Hand"/>
+                    </Grid>
+                    <WrapPanel x:Name="QuickLaunchPanel" Orientation="Horizontal"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

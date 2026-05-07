@@ -1,0 +1,70 @@
+<UserControl x:Class="StreamCommand.Views.QuickLaunchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource AppBackground}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Quick Launch" Style="{StaticResource SectionHeader}" FontSize="18"/>
+                <TextBlock Text="One-click access to all your streaming tools — opens in your browser"
+                           Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+            </StackPanel>
+            <Button Content="+ Add App"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Click="ShowAddForm_Click"/>
+        </Grid>
+
+        <!-- Add Form -->
+        <Border x:Name="AddForm"
+                Grid.Row="1"
+                Style="{StaticResource Card}"
+                Visibility="Collapsed"
+                Margin="0,0,0,12"
+                BorderBrush="{DynamicResource AccentBorder}">
+            <StackPanel>
+                <TextBlock Text="Add New App" Style="{StaticResource SectionHeader}" Margin="0,0,0,10"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="120"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="EmojiInput"   Grid.Column="0" Style="{StaticResource ModernTextBox}" MaxLength="2" Text="🔗"/>
+                    <TextBox x:Name="LabelInput"   Grid.Column="2" Style="{StaticResource ModernTextBox}" Tag="App name"/>
+                    <TextBox x:Name="UrlInput"     Grid.Column="4" Style="{StaticResource ModernTextBox}" Tag="https://..."/>
+                    <TextBox x:Name="CategoryInput" Grid.Column="6" Style="{StaticResource ModernTextBox}" Text="Tools"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="Save"   Style="{StaticResource PrimaryButton}"   Padding="18,8" Click="SaveApp_Click"/>
+                    <Button Content="Cancel" Style="{StaticResource SecondaryButton}" Padding="14,8" Margin="8,0,0,0" Click="CancelAdd_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Category Filter -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled" Margin="0,0,0,12">
+            <WrapPanel x:Name="CategoryFilters" Orientation="Horizontal"/>
+        </ScrollViewer>
+
+        <!-- App Tiles -->
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <WrapPanel x:Name="AppTiles" Orientation="Horizontal"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

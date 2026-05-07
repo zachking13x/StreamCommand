@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="StreamCommand.csproj" />
+  <Project Path="StreamCommandPackage\StreamCommandPackage.wapproj" />
+</Solution>

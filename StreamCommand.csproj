@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>StreamCommand</AssemblyName>
+    <RootNamespace>StreamCommand</RootNamespace>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <!-- Version — bump these for every Store submission -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Company>Zach Kramer</Company>
+    <Authors>Zach Kramer</Authors>
+    <Product>Stream Command</Product>
+    <Copyright>Copyright © 2026 Zach Kramer</Copyright>
+    <Description>Your all-in-one streaming dashboard — Twitch chat, OBS control, Go Live in one click.</Description>
+    <!-- Produce a self-contained single-folder publish for packaging -->
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico" Condition="Exists('Assets\icon.ico')" />
+    <Resource Include="Themes\DarkTheme.xaml" />
+  </ItemGroup>
+
+</Project>
