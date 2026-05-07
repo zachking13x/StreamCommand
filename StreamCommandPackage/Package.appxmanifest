@@ -7,7 +7,7 @@
 
   <Identity
     Name="ZachKramer.StreamCommand"
-    Publisher="CN=StreamCommand"
+    Publisher="CN=19367528-D63E-434A-8936-D6472D317EDC"
     Version="1.0.0.0" />
 
   <Properties>
@@ -45,7 +45,6 @@
           </uap:ShowNameOnTiles>
         </uap:DefaultTile>
         <uap:SplashScreen Image="Images\SplashScreen.png" BackgroundColor="#0D0D14"/>
-        <uap:LockScreen BadgeLogo="Images\Square44x44Logo.targetsize-24.png" Notification="badge"/>
       </uap:VisualElements>
     </Application>
   </Applications>
