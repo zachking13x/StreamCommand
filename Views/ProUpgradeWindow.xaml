@@ -30,10 +30,8 @@
             </StackPanel>
 
             <!-- Pricing cards -->
-            <Grid Margin="0,0,0,28">
+            <Grid Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
@@ -41,29 +39,28 @@
 
                 <!-- Monthly -->
                 <Border Grid.Column="0"
-            Background="{DynamicResource CardBackground}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="1" CornerRadius="12" Padding="16,20">
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="12" Padding="16,20">
                     <StackPanel>
                         <TextBlock Text="Monthly" Foreground="{DynamicResource MutedText}"
-                       FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                   FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                             <TextBlock Text="$" Foreground="{DynamicResource PrimaryText}" FontSize="16"
-                           FontWeight="Bold" Margin="0,6,1,0" VerticalAlignment="Top"/>
-                            <TextBlock Text="8.99" Foreground="{DynamicResource PrimaryText}"
-                           FontSize="36" FontWeight="Bold"/>
+                                       FontWeight="Bold" Margin="0,6,1,0" VerticalAlignment="Top"/>
+                            <TextBlock Text="6.99" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="36" FontWeight="Bold"/>
                         </StackPanel>
-                        <TextBlock Text="per month" Foreground="{DynamicResource MutedText}"
-                       FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,16"/>
+                        <TextBlock Text="per month · cancel anytime" Foreground="{DynamicResource MutedText}"
+                                   FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,16"/>
                         <Button x:Name="MonthlyBtn" Content="Choose Monthly"
-                    Style="{StaticResource SecondaryButton}"
-                    Padding="12,8" Click="Monthly_Click"/>
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="12,8" Click="Monthly_Click"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Annual — BEST VALUE -->
-                <Border Grid.Column="2"
-            BorderThickness="2" CornerRadius="12" Padding="16,20">
+                <Border Grid.Column="2" BorderThickness="2" CornerRadius="12" Padding="16,20">
                     <Border.BorderBrush>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                             <GradientStop Color="#7C3AED" Offset="0"/>
@@ -78,58 +75,77 @@
                     </Border.Background>
                     <StackPanel>
                         <Border Background="{DynamicResource AccentBrush}" CornerRadius="20"
-                    Padding="10,3" HorizontalAlignment="Center" Margin="0,0,0,8">
-                            <TextBlock Text="BEST VALUE  ·  SAVE 35%" Foreground="White"
-                           FontSize="10" FontWeight="Bold"/>
+                                Padding="10,3" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <TextBlock Text="BEST VALUE  ·  SAVE 40%" Foreground="White"
+                                       FontSize="10" FontWeight="Bold"/>
                         </Border>
                         <TextBlock Text="Annual" Foreground="{DynamicResource AccentLight}"
-                       FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                   FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <TextBlock Text="$" Foreground="{DynamicResource PrimaryText}" FontSize="16"
-                           FontWeight="Bold" Margin="0,6,1,0" VerticalAlignment="Top"/>
-                            <TextBlock Text="69.99" Foreground="{DynamicResource PrimaryText}"
-                           FontSize="36" FontWeight="Bold"/>
+                                       FontWeight="Bold" Margin="0,6,1,0" VerticalAlignment="Top"/>
+                            <TextBlock Text="49.99" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="36" FontWeight="Bold"/>
                         </StackPanel>
-                        <TextBlock Text="per year  ($5.83/mo)" Foreground="{DynamicResource MutedText}"
-                       FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,16"/>
+                        <TextBlock Text="per year  ($4.17/mo)" Foreground="{DynamicResource MutedText}"
+                                   FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,16"/>
                         <Button x:Name="AnnualBtn" Content="Choose Annual"
-                    Style="{StaticResource PrimaryButton}"
-                    Padding="12,8" Click="Annual_Click"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Lifetime -->
-                <Border Grid.Column="4"
-            Background="{DynamicResource CardBackground}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="1" CornerRadius="12" Padding="16,20">
-                    <StackPanel>
-                        <TextBlock Text="Lifetime" Foreground="{DynamicResource MutedText}"
-                       FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <TextBlock Text="$" Foreground="{DynamicResource PrimaryText}" FontSize="16"
-                           FontWeight="Bold" Margin="0,6,1,0" VerticalAlignment="Top"/>
-                            <TextBlock Text="119.99" Foreground="{DynamicResource PrimaryText}"
-                           FontSize="36" FontWeight="Bold"/>
-                        </StackPanel>
-                        <TextBlock Text="one-time payment" Foreground="{DynamicResource MutedText}"
-                       FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,16"/>
-                        <Button x:Name="LifetimeBtn" Content="Choose Lifetime"
-                    Style="{StaticResource SecondaryButton}"
-                    Padding="12,8" Click="Lifetime_Click"/>
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="12,8" Click="Annual_Click"/>
                     </StackPanel>
                 </Border>
             </Grid>
 
+            <!-- Launch promo — Lifetime (time-limited, retiring soon) -->
+            <Border Background="#0F1A10" BorderBrush="#4ADE80"
+                    BorderThickness="1" CornerRadius="10" Padding="16,12" Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Background="#166534" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
+                                <TextBlock Text="🚀 LAUNCH SPECIAL" Foreground="#86EFAC"
+                                           FontSize="10" FontWeight="Bold"/>
+                            </Border>
+                            <TextBlock Text="Retiring after launch window" Foreground="#86EFAC"
+                                       FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource SecondaryText}" FontSize="12" TextWrapping="Wrap">
+                            <Run Text="Lifetime access" FontWeight="SemiBold" Foreground="White"/>
+                            <Run Text=" — one payment, no recurring fees. Available at launch pricing only."/>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="$" Foreground="White" FontSize="13" FontWeight="Bold"
+                                       Margin="0,4,1,0" VerticalAlignment="Top"/>
+                            <TextBlock Text="89.99" Foreground="White" FontSize="26" FontWeight="Bold"/>
+                        </StackPanel>
+                        <Button x:Name="LifetimeBtn" Content="Get Lifetime Access"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="12,6" Margin="0,6,0,0"
+                                Click="Lifetime_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
 
             <!-- Social proof -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
-                <TextBlock Text="⭐⭐⭐⭐⭐" FontSize="13" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" VerticalAlignment="Center">
-                    <Run Text="Loved by"/>
-                    <Run Text=" streamers on Windows" Foreground="{DynamicResource SecondaryText}"/>
-                    <Run Text=" · Rated 5 stars on the Microsoft Store"/>
-                </TextBlock>
+            <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                    <TextBlock Text="⭐⭐⭐⭐⭐" FontSize="13" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" VerticalAlignment="Center">
+                        <Run Text="Trusted by"/>
+                        <Run Text=" 500+ streamers" Foreground="{DynamicResource AccentLight}" FontWeight="SemiBold"/>
+                        <Run Text=" on Windows"/>
+                    </TextBlock>
+                </StackPanel>
+                <TextBlock HorizontalAlignment="Center"
+                           Foreground="{DynamicResource MutedText}" FontSize="11" FontStyle="Italic"
+                           Text="&quot;Best $7 I&apos;ve spent on streaming. Replaced 3 browser tabs I had open every stream.&quot;"/>
             </StackPanel>
 
             <!-- Feature comparison -->
@@ -143,6 +159,7 @@
                         <ColumnDefinition Width="72"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -177,53 +194,60 @@
                     <TextBlock Grid.Column="2" Grid.Row="2" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="3" Margin="0,8,0,8">
-                        <TextBlock Text="Pre-Stream Checklist &amp; Planner" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="Pre-Stream Checklist" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
                         <TextBlock Text="Never forget a mic check or title update — launch every stream prepared." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="3" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="3" Text="View only" Foreground="{DynamicResource MutedText}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Width="60"/>
                     <TextBlock Grid.Column="2" Grid.Row="3" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="4" Margin="0,8,0,8">
-                        <TextBlock Text="Analytics — 30-day history" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
-                        <TextBlock Text="See follower growth, peak viewers, and stream hours to know what's actually working." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        <TextBlock Text="Stream Planner — unlimited streams" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="Schedule future streams with dates, times, and notes so you never go in unprepared." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="4" Text="Live only" Foreground="{DynamicResource MutedText}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Width="60"/>
+                    <TextBlock Grid.Column="1" Grid.Row="4" Text="3 streams" Foreground="{DynamicResource MutedText}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Width="60"/>
                     <TextBlock Grid.Column="2" Grid.Row="4" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="5" Margin="0,8,0,8">
-                        <TextBlock Text="Automation Rules — unlimited" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
-                        <TextBlock Text="Auto-greet followers, alert on raids, celebrate milestones — runs while you focus on the stream." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        <TextBlock Text="Analytics — 30-day history" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="See follower growth, peak viewers, and stream hours to know what's actually working." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="5" Text="3 rules" Foreground="{DynamicResource MutedText}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="5" Text="Live only" Foreground="{DynamicResource MutedText}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Width="60"/>
                     <TextBlock Grid.Column="2" Grid.Row="5" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="6" Margin="0,8,0,8">
-                        <TextBlock Text="Multi-platform (Twitch + YouTube)" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
-                        <TextBlock Text="Manage both platforms from one dashboard — grow on two channels simultaneously." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        <TextBlock Text="Automation Rules — unlimited" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="Auto-greet followers, alert on raids, celebrate milestones — runs while you focus on the stream." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="6" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="6" Text="3 rules" Foreground="{DynamicResource MutedText}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="2" Grid.Row="6" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="7" Margin="0,8,0,8">
-                        <TextBlock Text="Unlimited Quick-Launch shortcuts" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
-                        <TextBlock Text="One click to open OBS, Discord, Streamlabs, or any app you use mid-stream." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        <TextBlock Text="Multi-platform (Twitch + YouTube)" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="Manage both platforms from one dashboard — grow on two channels simultaneously." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="7" Text="5 apps" Foreground="{DynamicResource MutedText}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="7" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="2" Grid.Row="7" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
                     <StackPanel Grid.Column="0" Grid.Row="8" Margin="0,8,0,8">
+                        <TextBlock Text="Unlimited Quick-Launch shortcuts" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
+                        <TextBlock Text="One click to open OBS, Discord, Streamlabs, or any app you use mid-stream." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Grid.Row="8" Text="5 apps" Foreground="{DynamicResource MutedText}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Grid.Row="8" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="0" Grid.Row="9" Margin="0,8,0,8">
                         <TextBlock Text="Stream Alert Overlay" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
                         <TextBlock Text="On-screen toasts for follows, subs, and raids — always on top, no separate app needed." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="8" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Grid.Row="8" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="9" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Grid.Row="9" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                    <StackPanel Grid.Column="0" Grid.Row="9" Margin="0,8,0,0">
+                    <StackPanel Grid.Column="0" Grid.Row="10" Margin="0,8,0,0">
                         <TextBlock Text="Priority support" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="Medium"/>
                         <TextBlock Text="Get faster answers directly from the developer when something breaks." Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Grid.Row="9" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Grid.Row="9" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Grid.Row="10" Text="—" Foreground="{DynamicResource MutedText}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Grid.Row="10" Text="✓" Foreground="{DynamicResource SuccessBrush}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
             </Border>
 

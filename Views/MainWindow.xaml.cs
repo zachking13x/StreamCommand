@@ -57,6 +57,18 @@ public partial class MainWindow : Window
     {
         var item = NavList.SelectedItem as ListBoxItem;
         var tag = item?.Tag?.ToString();
+
+        if (tag == "whats-new")
+        {
+            // Open changelog as a dialog, then deselect so the item doesn't stay highlighted
+            var win = new WhatsNewWindow { Owner = this };
+            win.ShowDialog();
+            // Restore previous selection
+            if (e.RemovedItems.Count > 0)
+                NavList.SelectedItem = e.RemovedItems[0];
+            return;
+        }
+
         if (tag != null && _views.TryGetValue(tag, out var view))
             MainContent.Content = view;
     }

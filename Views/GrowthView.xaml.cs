@@ -97,7 +97,9 @@ public partial class GrowthView : UserControl
                     ? new SolidColorBrush(Color.FromArgb(0x60, 0x22, 0xC5, 0x5E))
                     : (Brush)FindResource("BorderBrush"),
                 BorderThickness = new Thickness(1),
-                Opacity         = achieved ? 1.0 : 0.55
+                Opacity         = achieved ? 1.0 : 0.55,
+                Cursor          = achieved ? System.Windows.Input.Cursors.Hand : null,
+                Tag             = label
             };
 
             var row = new StackPanel { Orientation = Orientation.Horizontal };
@@ -120,7 +122,39 @@ public partial class GrowthView : UserControl
             });
 
             border.Child = row;
+
+            // Tap achieved milestones to celebrate
+            if (achieved)
+                border.MouseLeftButtonUp += Milestone_Click;
+
             MilestoneGrid.Children.Add(border);
         }
     }
+
+    private void Milestone_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is Border { Tag: string label })
+            ShowCelebration(label);
+    }
+
+    private void ShowCelebration(string label)
+    {
+        CelebrationTitle.Text   = $"🏆  {label} — Milestone hit!";
+        CelebrationBanner.Visibility = Visibility.Visible;
+
+        // Auto-dismiss after 4 seconds
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = System.TimeSpan.FromSeconds(4)
+        };
+        timer.Tick += (_, _) =>
+        {
+            CelebrationBanner.Visibility = Visibility.Collapsed;
+            timer.Stop();
+        };
+        timer.Start();
+    }
+
+    private void DismissCelebration_Click(object sender, RoutedEventArgs e)
+        => CelebrationBanner.Visibility = Visibility.Collapsed;
 }

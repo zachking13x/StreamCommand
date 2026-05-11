@@ -51,6 +51,28 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="20" MaxWidth="1100">
 
+            <!-- Milestone celebration banner (shown briefly on achievement click) -->
+            <Border x:Name="CelebrationBanner"
+                    Visibility="Collapsed"
+                    Background="#0F1A10" BorderBrush="#4ADE80"
+                    BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,14">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="CelebrationEmoji" Text="🎉" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="CelebrationTitle"
+                                       Foreground="#86EFAC" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11"
+                                       Text="Milestone achieved — keep going, the next one's closer than you think."/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="{DynamicResource MutedText}" FontSize="12" Cursor="Hand"
+                            Click="DismissCelebration_Click"/>
+                </Grid>
+            </Border>
+
             <!-- Header -->
             <Grid Margin="0,0,0,14">
                 <StackPanel>

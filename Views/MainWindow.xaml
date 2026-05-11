@@ -187,14 +187,22 @@
                     <ListBoxItem Tag="quick-launch">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🚀" Width="20" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Quick Launch" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Quick Launch" FontSize="13"/>
+                                <TextBlock Text="Your saved apps" Foreground="{DynamicResource MutedText}"
+                                           FontSize="10" Margin="0,1,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </ListBoxItem>
 
                     <ListBoxItem Tag="tools-hub">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🔧" Width="20" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Tools Hub" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Streamer Tools" FontSize="13"/>
+                                <TextBlock Text="Curated directory" Foreground="{DynamicResource MutedText}"
+                                           FontSize="10" Margin="0,1,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                     </ListBoxItem>
 
@@ -202,6 +210,19 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="⚙" Width="20" FontSize="14" VerticalAlignment="Center"/>
                             <TextBlock Text="Settings" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </ListBoxItem>
+
+                    <ListBoxItem Tag="whats-new">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📣" Width="20" FontSize="12" VerticalAlignment="Center"/>
+                            <StackPanel Margin="8,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                                <TextBlock Text="What's New" VerticalAlignment="Center"/>
+                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="8"
+                                        Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="v1.0.2" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </ListBoxItem>
 

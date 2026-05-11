@@ -5,11 +5,13 @@ using System.Windows;
 using System.Windows.Controls;
 using StreamCommand.Models;
 using StreamCommand.Services;
+using StreamCommand.Views;
 
 namespace StreamCommand.Views;
 
 public partial class PlannerView : UserControl
 {
+    private const int FreePlannerLimit = 3;
     private readonly ObservableCollection<StreamEvent> _events = new();
 
     public PlannerView()
@@ -17,6 +19,21 @@ public partial class PlannerView : UserControl
         InitializeComponent();
         EventList.ItemsSource = _events;
         LoadEvents();
+        RefreshFreeBanner();
+    }
+
+    private void RefreshFreeBanner()
+    {
+        PlannerFreeBanner.Visibility = (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void UpgradePlanner_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+        win.ShowDialog();
+        RefreshFreeBanner();
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
@@ -66,7 +83,15 @@ public partial class PlannerView : UserControl
     // ── Add / Cancel / Save ──────────────────────────────────────────────────
 
     private void AddStream_Click(object sender, RoutedEventArgs e)
-        => AddForm.Visibility = Visibility.Visible;
+    {
+        if (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
+        {
+            var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+            win.ShowDialog();
+            return;
+        }
+        AddForm.Visibility = Visibility.Visible;
+    }
 
     private void CancelAdd_Click(object sender, RoutedEventArgs e)
         => AddForm.Visibility = Visibility.Collapsed;
@@ -74,6 +99,14 @@ public partial class PlannerView : UserControl
     private void SaveStream_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TitleInput.Text)) return;
+
+        if (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
+        {
+            AddForm.Visibility = Visibility.Collapsed;
+            var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+            win.ShowDialog();
+            return;
+        }
 
         var date     = DateInput.SelectedDate ?? DateTime.Now.AddDays(1);
         var platform = (PlatformInput.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Twitch";
@@ -91,6 +124,7 @@ public partial class PlannerView : UserControl
         });
 
         SaveEvents();   // persist immediately
+        RefreshFreeBanner();
 
         TitleInput.Text  = "";
         TimeInput.Text   = "";
@@ -104,6 +138,7 @@ public partial class PlannerView : UserControl
         {
             _events.Remove(ev);
             SaveEvents();   // persist immediately
+            RefreshFreeBanner();
         }
     }
 }

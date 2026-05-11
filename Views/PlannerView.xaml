@@ -97,6 +97,19 @@
                 <TextBlock Text="Stream Planner" Style="{StaticResource SectionHeader}" FontSize="18"/>
                 <TextBlock Text="Schedule and manage upcoming streams"
                            Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                <!-- Free tier limit notice (code-behind shows/hides) -->
+                <Border x:Name="PlannerFreeBanner" Visibility="Collapsed"
+                        Background="#1A0F3A" BorderBrush="{DynamicResource AccentBorder}"
+                        BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔒  Free plan: 3 scheduled streams max. "
+                                   Foreground="{DynamicResource AccentLight}" FontSize="12"/>
+                        <TextBlock Text="Upgrade to Pro for unlimited →"
+                                   Foreground="{DynamicResource AccentLight}" FontSize="12"
+                                   FontWeight="SemiBold" Cursor="Hand"
+                                   MouseLeftButtonUp="UpgradePlanner_Click"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
             <Button Content="+ Schedule Stream"
                     Style="{StaticResource PrimaryButton}"

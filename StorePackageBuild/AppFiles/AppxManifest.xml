@@ -8,7 +8,7 @@
   <Identity
     Name="590453723.StreamCommand"
     Publisher="CN=19367528-D63E-434A-8936-D6472D317EDC"
-    Version="1.0.1.0" />
+    Version="1.0.3.0" />
 
   <Properties>
     <DisplayName>StreamCommand</DisplayName>
@@ -26,7 +26,7 @@
   </Resources>
 
   <Applications>
-    <Application Id="StreamCommand" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+    <Application Id="StreamCommand" Executable="StreamCommand.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Stream Command"
         Description="Your all-in-one streaming dashboard"
@@ -55,4 +55,8 @@
   </Capabilities>
 
 </Package>
+
+
+
+
 
