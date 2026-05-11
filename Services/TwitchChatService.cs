@@ -6,25 +6,47 @@ using System.Threading.Tasks;
 
 namespace StreamCommand.Services;
 
+public enum TwitchEventType
+{
+    ChatMessage,
+    Subscribe,
+    Resub,
+    GiftSub,
+    Raid,
+}
+
 public class TwitchChatMessage
 {
-    public string Username { get; set; } = "";
-    public string Color    { get; set; } = "#C084FC";
-    public string Text     { get; set; } = "";
-    public bool   IsSub    { get; set; }
-    public bool   IsMod    { get; set; }
-    public bool   IsVip    { get; set; }
-    public bool   IsAlert  { get; set; }   // sub / resub / gift
-    public DateTime Time   { get; set; } = DateTime.Now;
+    public string         Username      { get; set; } = "";
+    public string         Color         { get; set; } = "#C084FC";
+    public string         Text          { get; set; } = "";
+    public bool           IsSub         { get; set; }
+    public bool           IsMod         { get; set; }
+    public bool           IsVip         { get; set; }
+    public bool           IsAlert       { get; set; }   // sub / resub / gift / raid
+    public DateTime       Time          { get; set; } = DateTime.Now;
+
+    // Typed event — set by ParseUserNotice so AutomationEngine can match without string parsing
+    public TwitchEventType EventType    { get; set; } = TwitchEventType.ChatMessage;
+
+    // Extra context for template expansion (@raider, {months})
+    public string         Months        { get; set; } = "1";
+    public string         RaiderName    { get; set; } = "";
+    public string         ViewerCount   { get; set; } = "0";
 }
 
 /// <summary>
 /// Connects to Twitch chat via IRC over WebSocket.
-/// Requires a free OAuth token — get one at https://twitchapps.com/tmi/
-/// No Twitch app registration or subscription needed for read-only chat.
+/// Use <see cref="Shared"/> for the single app-wide instance so that
+/// ChatMonitor, AutomationEngine, and any other subscriber share one connection.
 /// </summary>
 public class TwitchChatService
 {
+    // ── Shared singleton ─────────────────────────────────────────────────────
+    /// <summary>App-wide shared instance. Wire all subscribers here.</summary>
+    public static readonly TwitchChatService Shared = new();
+
+    // ── State ────────────────────────────────────────────────────────────────
     private ClientWebSocket?         _ws;
     private CancellationTokenSource? _cts;
 
@@ -32,9 +54,9 @@ public class TwitchChatService
 
     public event Action<TwitchChatMessage>? MessageReceived;
     public event Action<string>?            StatusChanged;
-    public event Action?                    Connected;     // fires once JOIN is confirmed
+    public event Action?                    Connected;
 
-    // ── Connect ─────────────────────────────────────────────────────────────
+    // ── Connect ──────────────────────────────────────────────────────────────
 
     public async Task ConnectAsync(string channel, string username, string oauthToken)
     {
@@ -48,10 +70,8 @@ public class TwitchChatService
         {
             await _ws.ConnectAsync(new Uri("wss://irc-ws.chat.twitch.tv:443"), _cts.Token);
 
-            // Request tag metadata (color, badges, sub status)
             await IrcSendAsync("CAP REQ :twitch.tv/tags twitch.tv/commands");
 
-            // Authenticate — token may or may not already include "oauth:"
             var token = oauthToken.StartsWith("oauth:", StringComparison.OrdinalIgnoreCase)
                 ? oauthToken
                 : "oauth:" + oauthToken;
@@ -60,7 +80,6 @@ public class TwitchChatService
             await IrcSendAsync($"JOIN #{channel.ToLower().TrimStart('#')}");
 
             StatusChanged?.Invoke($"Joining #{channel} chat…");
-            // Connected is fired inside ListenLoopAsync after we see the JOIN confirmation
             _ = Task.Run(ListenLoopAsync, _cts.Token);
         }
         catch (Exception ex)
@@ -69,7 +88,7 @@ public class TwitchChatService
         }
     }
 
-    /// <summary>Sends a chat message to the joined channel as the bot user.</summary>
+    /// <summary>Sends a chat message to the joined channel as the authenticated user.</summary>
     public async Task SendMessageAsync(string channel, string message)
     {
         if (!IsConnected) return;
@@ -83,7 +102,7 @@ public class TwitchChatService
         if (_ws?.State == WebSocketState.Open)
             try { await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
         _ws?.Dispose();
-        _ws = null;
+        _ws  = null;
         _cts?.Dispose();
         _cts = null;
     }
@@ -121,15 +140,12 @@ public class TwitchChatService
 
     private async Task HandleLineAsync(string line)
     {
-        // Respond to PING immediately so we don't get disconnected
         if (line.StartsWith("PING"))
         {
             await IrcSendAsync("PONG :tmi.twitch.tv");
             return;
         }
 
-        // 376 = End of MOTD — Twitch sends this right before JOIN succeeds
-        // 366 = End of NAMES list — fired after a successful JOIN
         if (!_joinConfirmed && (line.Contains(" 376 ") || line.Contains(" 366 ") || line.Contains("JOIN #")))
         {
             _joinConfirmed = true;
@@ -137,14 +153,12 @@ public class TwitchChatService
             Connected?.Invoke();
         }
 
-        // Login failed
         if (line.Contains("Login authentication failed") || line.Contains("NOTICE * :"))
         {
             StatusChanged?.Invoke("⚠  Login failed — check your Twitch token in Settings");
             return;
         }
 
-        // Parse @tags prefix
         string tags      = "";
         string remainder = line;
 
@@ -156,7 +170,6 @@ public class TwitchChatService
             remainder = line[(sp + 1)..];
         }
 
-        // PRIVMSG = regular chat message
         if (remainder.Contains("PRIVMSG"))
         {
             var msg = ParsePrivmsg(tags, remainder);
@@ -164,7 +177,6 @@ public class TwitchChatService
             return;
         }
 
-        // USERNOTICE = sub / resub / gift sub / raid etc.
         if (remainder.Contains("USERNOTICE"))
         {
             var msg = ParseUserNotice(tags, remainder);
@@ -176,12 +188,11 @@ public class TwitchChatService
 
     private static TwitchChatMessage? ParsePrivmsg(string tags, string remainder)
     {
-        // :username!username@username.tmi.twitch.tv PRIVMSG #channel :message
         var prefixEnd = remainder.IndexOf(' ');
         if (prefixEnd < 0) return null;
-        var prefix     = remainder[1..prefixEnd];
-        var excl       = prefix.IndexOf('!');
-        var username   = excl > 0 ? prefix[..excl] : prefix;
+        var prefix   = remainder[1..prefixEnd];
+        var excl     = prefix.IndexOf('!');
+        var username = excl > 0 ? prefix[..excl] : prefix;
 
         var msgStart = remainder.LastIndexOf(" :");
         if (msgStart < 0) return null;
@@ -190,41 +201,61 @@ public class TwitchChatService
         var t = ParseTags(tags);
         return new TwitchChatMessage
         {
-            Username = username,
-            Color    = t.color,
-            Text     = text,
-            IsSub    = t.isSub,
-            IsMod    = t.isMod,
-            IsVip    = t.isVip,
-            Time     = DateTime.Now
+            Username  = username,
+            Color     = t.color,
+            Text      = text,
+            IsSub     = t.isSub,
+            IsMod     = t.isMod,
+            IsVip     = t.isVip,
+            EventType = TwitchEventType.ChatMessage,
+            Time      = DateTime.Now
         };
     }
 
     private static TwitchChatMessage? ParseUserNotice(string tags, string remainder)
     {
-        // System message for subs, raids, etc.
-        var t       = ParseTags(tags);
-        var msgType = t.msgId;
+        var t = ParseTags(tags);
 
-        string alertText = msgType switch
+        // Map msg-id → EventType and human-readable text
+        TwitchEventType eventType;
+        string alertText;
+
+        switch (t.msgId)
         {
-            "sub"         => $"⭐ {t.displayName} just subscribed!",
-            "resub"       => $"⭐ {t.displayName} resubscribed for {t.months} months!",
-            "subgift"     => $"🎁 {t.displayName} gifted a sub to {t.recipient}!",
-            "submysterygift" => $"🎁 {t.displayName} is gifting {t.giftCount} subs!",
-            "raid"        => $"🚀 {t.displayName} is raiding with {t.viewerCount} viewers!",
-            _             => ""
-        };
-
-        if (string.IsNullOrEmpty(alertText)) return null;
+            case "sub":
+                eventType = TwitchEventType.Subscribe;
+                alertText = $"⭐ {t.displayName} just subscribed!";
+                break;
+            case "resub":
+                eventType = TwitchEventType.Resub;
+                alertText = $"⭐ {t.displayName} resubscribed for {t.months} months!";
+                break;
+            case "subgift":
+            case "submysterygift":
+                eventType = TwitchEventType.GiftSub;
+                alertText = t.msgId == "submysterygift"
+                    ? $"🎁 {t.displayName} is gifting {t.giftCount} subs!"
+                    : $"🎁 {t.displayName} gifted a sub to {t.recipient}!";
+                break;
+            case "raid":
+                eventType = TwitchEventType.Raid;
+                alertText = $"🚀 {t.displayName} is raiding with {t.viewerCount} viewers!";
+                break;
+            default:
+                return null;
+        }
 
         return new TwitchChatMessage
         {
-            Username = t.displayName,
-            Color    = "#F59E0B",
-            Text     = alertText,
-            IsAlert  = true,
-            Time     = DateTime.Now
+            Username    = t.displayName,
+            Color       = "#F59E0B",
+            Text        = alertText,
+            IsAlert     = true,
+            EventType   = eventType,
+            Months      = t.months,
+            RaiderName  = t.displayName,
+            ViewerCount = t.viewerCount,
+            Time        = DateTime.Now
         };
     }
 
@@ -252,9 +283,9 @@ public class TwitchChatService
                 case "msg-id":            msgId        = val;        break;
                 case "display-name":      displayName  = val;        break;
                 case "msg-param-months":  months       = val;        break;
-                case "msg-param-recipient-display-name": recipient = val; break;
-                case "msg-param-mass-gift-count": giftCount = val;   break;
-                case "msg-param-viewerCount": viewerCount = val;     break;
+                case "msg-param-recipient-display-name": recipient   = val; break;
+                case "msg-param-mass-gift-count":        giftCount   = val; break;
+                case "msg-param-viewerCount":            viewerCount = val; break;
             }
         }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using StreamCommand.Models;
 
 namespace StreamCommand.Services;
@@ -31,7 +32,42 @@ public class AppSettings
     public string OBSWebSocketPassword{ get; set; } = ""; // leave blank if OBS has no password set
     public int    OBSWebSocketPort    { get; set; } = 4455;
     public bool   SetupComplete       { get; set; } = false;
-    public List<PlannerEvent>  PlannerEvents { get; set; } = new();
+    public List<PlannerEvent>    PlannerEvents    { get; set; } = new();
+
+    /// <summary>
+    /// Automation rules persisted across sessions.
+    /// Seeded with defaults on first run; user toggles and additions are saved here.
+    /// </summary>
+    public List<AutomationRule>  AutomationRules  { get; set; } = new()
+    {
+        new() { Id="default-sub",    Category="Subscribers", TriggerType=AutomationTrigger.NewSubscriber,
+                Trigger="New subscriber",             Action="Send thank-you message",
+                ResponseTemplate="Thanks for subscribing, @user! Welcome to the community! \U0001f389",
+                IsEnabled=true },
+        new() { Id="default-resub",  Category="Subscribers", TriggerType=AutomationTrigger.Resub,
+                Trigger="Re-subscription (any tier)", Action="Send welcome-back message",
+                ResponseTemplate="Welcome back @user! Month {months} and counting! \U0001f525",
+                IsEnabled=true },
+        new() { Id="default-gift",   Category="Subscribers", TriggerType=AutomationTrigger.GiftSub,
+                Trigger="Gift sub",                   Action="Thank the gifter",
+                ResponseTemplate="Massive thanks to @user for the gift sub! \U0001f381",
+                IsEnabled=true },
+        new() { Id="default-raid",   Category="Raids",       TriggerType=AutomationTrigger.Raid,
+                Trigger="Raid received",              Action="Welcome raiders message",
+                ResponseTemplate="Welcome raiders from @raider! \U0001f680 Make yourselves at home!",
+                IsEnabled=false },
+        new() { Id="default-socials",Category="Commands",    TriggerType=AutomationTrigger.ChatCommand,
+                CommandKeyword="!socials",            Trigger="!socials in chat",
+                Action="Post social links",
+                ResponseTemplate="Follow me on Twitter and YouTube — links in the channel description!",
+                IsEnabled=true },
+        new() { Id="default-sched",  Category="Commands",    TriggerType=AutomationTrigger.ChatCommand,
+                CommandKeyword="!schedule",           Trigger="!schedule in chat",
+                Action="Post upcoming schedule",
+                ResponseTemplate="Check my Twitch schedule panel for upcoming stream times!",
+                IsEnabled=true },
+    };
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
@@ -55,7 +91,7 @@ public static class SettingsService
         {
             if (!File.Exists(SettingsPath)) return new AppSettings();
             var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            return JsonSerializer.Deserialize<AppSettings>(json, _jsonOpts) ?? new AppSettings();
         }
         catch
         {
@@ -63,10 +99,15 @@ public static class SettingsService
         }
     }
 
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        WriteIndented    = true,
+        Converters       = { new JsonStringEnumConverter() }   // enums as strings in JSON
+    };
+
     public static void Save(AppSettings settings)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(SettingsPath, json);
+        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, _jsonOpts));
     }
 }

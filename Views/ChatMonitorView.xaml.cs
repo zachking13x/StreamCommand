@@ -22,7 +22,8 @@ public class ChatMessage
 public partial class ChatMonitorView : UserControl
 {
     private readonly ObservableCollection<ChatMessage> _messages = new();
-    private readonly TwitchChatService _chat = new();
+    // Use the shared singleton so AutomationEngine receives the same events
+    private readonly TwitchChatService _chat = TwitchChatService.Shared;
     private string _filter = "all";
 
     public ChatMonitorView()
@@ -89,17 +90,6 @@ public partial class ChatMonitorView : UserControl
         // Raise alert for subs / raids / bits
         if (msg.IsAlert)
             StreamEvents.RaiseAlert(badge.Length > 0 ? badge : "🔔", msg.Text);
-
-        // Auto-respond to !commands
-        if (!msg.IsAlert && msg.Text.TrimStart().StartsWith("!"))
-        {
-            var s   = SettingsService.Load();
-            var cmd = s.ChatCommands.FirstOrDefault(c =>
-                c.IsEnabled &&
-                msg.Text.Trim().Equals(c.Trigger, StringComparison.OrdinalIgnoreCase));
-            if (cmd is not null)
-                _ = _chat.SendMessageAsync(s.TwitchUsername, cmd.Response);
-        }
 
         // Auto-scroll to bottom
         ChatScroller.ScrollToBottom();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,12 +13,7 @@ public partial class DashboardView : UserControl
 {
     private readonly int[] _viewerData = { 280, 295, 310, 302, 318, 308, 325, 305, 315, 300, 320 };
 
-    private readonly List<(string Title, string Platform, string Date)> _upcoming = new()
-    {
-        ("Ranked Grind — Road to Diamond", "Twitch", "May 8, 7:00 PM"),
-        ("Friday Night Warzone with Subs",  "Twitch", "May 9, 8:00 PM"),
-        ("Chill Minecraft Building Session","YouTube","May 10, 3:00 PM")
-    };
+    // Populated at load time from the Planner's persisted events — not hardcoded
 
     private readonly List<(string Label, string Url, string Emoji)> _quickLinks = new()
     {
@@ -31,7 +27,7 @@ public partial class DashboardView : UserControl
     public DashboardView()
     {
         InitializeComponent();
-        BuildUpcomingList();
+        Loaded += (_, _) => BuildUpcomingList();   // load after layout so FindResource works
         BuildQuickLaunch();
 
         // Subscribe to OBS state changes from LiveControlView
@@ -86,41 +82,65 @@ public partial class DashboardView : UserControl
 
     private void BuildUpcomingList()
     {
-        foreach (var (title, platform, date) in _upcoming)
+        UpcomingList.Children.Clear();
+
+        // Read live from Planner — future streams only, max 3 shown
+        var s       = SettingsService.Load();
+        var now     = DateTime.Now;
+        var upcoming = s.PlannerEvents
+                        .Where(e => e.When > now)
+                        .OrderBy(e => e.When)
+                        .Take(3)
+                        .ToList();
+
+        if (upcoming.Count == 0)
         {
-            var wrapper = new Border { Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(0, 0, 0, 8) };
-            var inner = new Grid();
+            UpcomingList.Children.Add(new TextBlock
+            {
+                Text       = "No upcoming streams — add one in the Planner",
+                Foreground = (Brush)FindResource("MutedText"),
+                FontSize   = 12,
+                TextWrapping = TextWrapping.Wrap
+            });
+            return;
+        }
+
+        foreach (var ev in upcoming)
+        {
+            var wrapper = new Border { Margin = new Thickness(0, 0, 0, 8) };
+            var inner   = new Grid();
             inner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             inner.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var dotPanel = new Ellipse
+            var dot = new Ellipse
             {
-                Width = 8, Height = 8,
-                Fill = platform == "YouTube"
+                Width  = 8, Height = 8,
+                Fill   = ev.Platform == "YouTube"
                     ? new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44))
                     : new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
-                Margin = new Thickness(0, 3, 10, 0),
+                Margin            = new Thickness(0, 3, 10, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
+
             var infoStack = new StackPanel();
             infoStack.Children.Add(new TextBlock
             {
-                Text = title,
-                Foreground = new SolidColorBrush(Colors.White),
-                FontSize = 13,
+                Text         = ev.Title,
+                Foreground   = new SolidColorBrush(Colors.White),
+                FontSize     = 13,
                 TextWrapping = TextWrapping.Wrap
             });
             infoStack.Children.Add(new TextBlock
             {
-                Text = $"{platform}  ·  {date}",
+                Text       = $"{ev.Platform}  ·  {ev.When:MMM d, h:mm tt}",
                 Foreground = (Brush)FindResource("MutedText"),
-                FontSize = 11,
-                Margin = new Thickness(0, 2, 0, 0)
+                FontSize   = 11,
+                Margin     = new Thickness(0, 2, 0, 0)
             });
 
-            Grid.SetColumn(dotPanel, 0);
+            Grid.SetColumn(dot, 0);
             Grid.SetColumn(infoStack, 1);
-            inner.Children.Add(dotPanel);
+            inner.Children.Add(dot);
             inner.Children.Add(infoStack);
             wrapper.Child = inner;
             UpcomingList.Children.Add(wrapper);
