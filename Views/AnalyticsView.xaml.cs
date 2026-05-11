@@ -2,19 +2,115 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
+using System.Windows.Threading;
+using StreamCommand.Services;
 
 namespace StreamCommand.Views;
 
 public partial class AnalyticsView : UserControl
 {
-    private readonly double[] _followers = { 12100, 12340, 12520, 12700, 12800, 12894 };
+    private readonly double[] _followers   = { 12100, 12340, 12520, 12700, 12800, 12894 };
     private readonly double[] _avgViewers  = { 280, 310, 295, 320, 305 };
     private readonly double[] _peakViewers = { 340, 390, 360, 410, 380 };
     private readonly double[] _hours       = { 3.5, 4.0, 2.5, 5.0, 3.0 };
     private readonly string[] _streamDates = { "Apr 28", "Apr 30", "May 1", "May 3", "May 5" };
 
-    public AnalyticsView() => InitializeComponent();
+    private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromSeconds(60) };
+
+    public AnalyticsView()
+    {
+        InitializeComponent();
+        _refreshTimer.Tick += async (_, _) => await LoadLiveDataAsync();
+        Loaded += async (_, _) =>
+        {
+            ApplyProGate();
+            await LoadLiveDataAsync();
+            _refreshTimer.Start();
+        };
+    }
+
+    private void ApplyProGate()
+    {
+        bool isPro = EntitlementService.IsPro;
+        ProChartsGate.Visibility = isPro ? Visibility.Collapsed : Visibility.Visible;
+        ChartsContent.Effect     = isPro ? null : new BlurEffect { Radius = 10, KernelType = KernelType.Gaussian };
+    }
+
+    private void UpgradeAnalytics_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+        win.ShowDialog();
+        ApplyProGate(); // re-check after dialog closes in case they upgraded
+    }
+
+    private async System.Threading.Tasks.Task LoadLiveDataAsync()
+    {
+        var s = SettingsService.Load();
+
+        if (string.IsNullOrWhiteSpace(s.TwitchUsername) ||
+            string.IsNullOrWhiteSpace(s.TwitchClientId)  ||
+            string.IsNullOrWhiteSpace(s.TwitchChatToken))
+        {
+            ApiStatusBanner.Visibility = Visibility.Visible;
+            ApiStatusText.Text = "ℹ  Live stats require Twitch credentials";
+            ApiHintText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        ApiStatusBanner.Visibility = Visibility.Visible;
+        ApiStatusText.Text  = "🔄  Refreshing…";
+        ApiHintText.Visibility = Visibility.Collapsed;
+
+        var stats = await TwitchApiService.GetChannelStatsAsync(
+            s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
+
+        if (stats is null)
+        {
+            ApiStatusText.Text = "⚠  Could not reach Twitch API — check your credentials in Settings";
+            return;
+        }
+
+        // Viewer count
+        if (stats.IsLive)
+        {
+            StatViewers.Text    = stats.ViewerCount.ToString("N0");
+            StatViewersSub.Text = "Live right now";
+            StatViewersSub.Foreground = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+        }
+        else
+        {
+            StatViewers.Text    = "—";
+            StatViewersSub.Text = "Not currently live";
+            StatViewersSub.Foreground = (System.Windows.Media.Brush)FindResource("MutedText");
+        }
+
+        // Followers
+        if (stats.FollowerCount >= 0)
+        {
+            StatFollowers.Text    = stats.FollowerCount.ToString("N0");
+            StatFollowersSub.Text = "Total followers";
+        }
+        else
+        {
+            StatFollowers.Text    = "—";
+            StatFollowersSub.Text = "Needs moderator scope";
+        }
+
+        // Game
+        StatGame.Text    = stats.IsLive && !string.IsNullOrEmpty(stats.GameName) ? stats.GameName : "—";
+        StatGameSub.Text = stats.IsLive ? "Current category" : "Offline";
+
+        // Status
+        StatStatus.Text       = stats.IsLive ? "🔴 LIVE" : "Offline";
+        StatStatus.Foreground = stats.IsLive
+            ? (System.Windows.Media.Brush)FindResource("LiveBrush")
+            : (System.Windows.Media.Brush)FindResource("MutedText");
+
+        ApiStatusText.Text     = $"✓  Last updated {DateTime.Now:h:mm tt}";
+        ApiHintText.Visibility = Visibility.Collapsed;
+    }
 
     // ── Follower line chart ─────────────────────────────────────────────────
     private void FollowerChart_Loaded(object s, RoutedEventArgs e) => DrawFollowers();

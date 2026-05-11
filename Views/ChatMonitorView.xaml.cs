@@ -1,8 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using StreamCommand.Models;
 using StreamCommand.Services;
 
 namespace StreamCommand.Views;
@@ -42,7 +44,11 @@ public partial class ChatMonitorView : UserControl
         });
 
         // Auto-connect if settings are already filled in
-        Loaded += async (_, _) => await TryAutoConnectAsync();
+        Loaded += async (_, _) =>
+        {
+            await TryAutoConnectAsync();
+            BuildCommandsList();
+        };
     }
 
     // ── Connection ───────────────────────────────────────────────────────────
@@ -80,8 +86,116 @@ public partial class ChatMonitorView : UserControl
             IsAlert     = msg.IsAlert
         });
 
+        // Raise alert for subs / raids / bits
+        if (msg.IsAlert)
+            StreamEvents.RaiseAlert(badge.Length > 0 ? badge : "🔔", msg.Text);
+
+        // Auto-respond to !commands
+        if (!msg.IsAlert && msg.Text.TrimStart().StartsWith("!"))
+        {
+            var s   = SettingsService.Load();
+            var cmd = s.ChatCommands.FirstOrDefault(c =>
+                c.IsEnabled &&
+                msg.Text.Trim().Equals(c.Trigger, StringComparison.OrdinalIgnoreCase));
+            if (cmd is not null)
+                _ = _chat.SendMessageAsync(s.TwitchUsername, cmd.Response);
+        }
+
         // Auto-scroll to bottom
         ChatScroller.ScrollToBottom();
+    }
+
+    // ── Command management ───────────────────────────────────────────────────
+
+    private void BuildCommandsList()
+    {
+        CommandsPanel.Children.Clear();
+        var s = SettingsService.Load();
+
+        foreach (var cmd in s.ChatCommands)
+        {
+            var captured = cmd;
+            var row = new Border
+            {
+                Background      = new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)),
+                BorderBrush     = (Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(6),
+                Padding         = new Thickness(8, 6, 8, 6),
+                Margin          = new Thickness(0, 0, 0, 6)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Toggle checkbox
+            var toggle = new CheckBox
+            {
+                IsChecked       = cmd.IsEnabled,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin          = new Thickness(0, 0, 8, 0)
+            };
+            toggle.Checked   += (_, _) => SetCommandEnabled(captured.Trigger, true);
+            toggle.Unchecked += (_, _) => SetCommandEnabled(captured.Trigger, false);
+
+            var info = new StackPanel();
+            info.Children.Add(new TextBlock
+            {
+                Text       = cmd.Trigger,
+                Foreground = (Brush)FindResource("AccentLight"),
+                FontSize   = 12, FontWeight = FontWeights.SemiBold
+            });
+            info.Children.Add(new TextBlock
+            {
+                Text        = cmd.Response,
+                Foreground  = (Brush)FindResource("MutedText"),
+                FontSize    = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin      = new Thickness(0, 2, 0, 0)
+            });
+
+            Grid.SetColumn(toggle, 0);
+            Grid.SetColumn(info, 1);
+            grid.Children.Add(toggle);
+            grid.Children.Add(info);
+            row.Child = grid;
+            CommandsPanel.Children.Add(row);
+        }
+    }
+
+    private void SetCommandEnabled(string trigger, bool enabled)
+    {
+        var s = SettingsService.Load();
+        var cmd = s.ChatCommands.FirstOrDefault(c => c.Trigger == trigger);
+        if (cmd is not null) cmd.IsEnabled = enabled;
+        SettingsService.Save(s);
+    }
+
+    private void AddCommand_Click(object sender, RoutedEventArgs e)
+    {
+        AddCommandForm.Visibility = Visibility.Visible;
+        NewTriggerBox.Text  = "!";
+        NewResponseBox.Text = "";
+        NewTriggerBox.Focus();
+    }
+
+    private void CancelCommand_Click(object sender, RoutedEventArgs e)
+        => AddCommandForm.Visibility = Visibility.Collapsed;
+
+    private void SaveCommand_Click(object sender, RoutedEventArgs e)
+    {
+        var trigger  = NewTriggerBox.Text.Trim();
+        var response = NewResponseBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(trigger) || string.IsNullOrWhiteSpace(response)) return;
+        if (!trigger.StartsWith("!")) trigger = "!" + trigger;
+
+        var s = SettingsService.Load();
+        s.ChatCommands.Add(new ChatCommand { Trigger = trigger, Response = response, IsEnabled = true });
+        SettingsService.Save(s);
+
+        AddCommandForm.Visibility = Visibility.Collapsed;
+        BuildCommandsList();
     }
 
     // ── Filters ──────────────────────────────────────────────────────────────

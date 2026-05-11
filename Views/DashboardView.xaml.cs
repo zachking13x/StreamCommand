@@ -33,6 +33,55 @@ public partial class DashboardView : UserControl
         InitializeComponent();
         BuildUpcomingList();
         BuildQuickLaunch();
+
+        // Subscribe to OBS state changes from LiveControlView
+        StreamEvents.OBSStateChanged += isConnected =>
+            Dispatcher.Invoke(() => UpdateOBSPill(isConnected));
+
+        // Subscribe to checklist progress changes from PreStreamView
+        StreamEvents.ChecklistProgressChanged += (done, total) =>
+            Dispatcher.Invoke(() => UpdateChecklistCard(done, total));
+    }
+
+    private void UpdateChecklistCard(int done, int total)
+    {
+        double pct = total > 0 ? done * 100.0 / total : 0;
+        ChecklistProgressBar.Value  = pct;
+        ChecklistBadgeText.Text     = $"{done} / {total}";
+
+        if (done == 0)
+            ChecklistSubText.Text = "Open checklist to start your pre-stream setup";
+        else if (done == total)
+            ChecklistSubText.Text = "✓  All tasks complete — you're ready to go live!";
+        else
+            ChecklistSubText.Text = $"{total - done} task{(total - done == 1 ? "" : "s")} remaining before you go live";
+
+        // Badge turns green when complete
+        if (done == total && total > 0)
+        {
+            ChecklistBadge.Background  = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
+            ChecklistBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            ChecklistBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC));
+        }
+    }
+
+    private void OpenChecklist_Click(object sender, RoutedEventArgs e)
+        => MainWindow.NavigateTo?.Invoke("pre-stream");
+
+    private void UpdateOBSPill(bool isConnected)
+    {
+        var connectedColor = Color.FromRgb(0x22, 0xC5, 0x5E);
+        var disconnectedColor = Color.FromRgb(0xEF, 0x44, 0x44);
+        var c = isConnected ? connectedColor : disconnectedColor;
+        var brush = new SolidColorBrush(c);
+
+        OBSPill.BorderBrush = brush;
+        OBSPillDot.Fill = brush;
+        OBSPillText.Foreground = brush;
+        OBSPillText.Text = isConnected ? "OBS: Connected ✓" : "OBS: Disconnected";
+        OBSPill.Background = isConnected
+            ? new SolidColorBrush(Color.FromArgb(0x20, 0x22, 0xC5, 0x5E))
+            : new SolidColorBrush(Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
     }
 
     private void BuildUpcomingList()

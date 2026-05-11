@@ -9,6 +9,19 @@
             <TextBlock Text="Analytics" Style="{StaticResource SectionHeader}" FontSize="18" Margin="0,0,0,4"/>
             <TextBlock Text="Your streaming performance over time" Style="{StaticResource Muted}" Margin="0,0,0,14"/>
 
+            <!-- Live data status -->
+            <Border x:Name="ApiStatusBanner" Visibility="Collapsed"
+                    Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}"
+                    BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="ApiStatusText"
+                               Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                    <TextBlock Text=" — Add your Twitch Client ID in Settings for live data."
+                               Foreground="{DynamicResource MutedText}" FontSize="11"
+                               x:Name="ApiHintText"/>
+                </StackPanel>
+            </Border>
+
             <!-- Stat cards -->
             <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
@@ -19,79 +32,110 @@
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,7,0">
                     <StackPanel>
-                        <TextBlock Text="AVG VIEWERS" Style="{StaticResource Label}"/>
-                        <TextBlock Text="302" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="↑ +12% vs last month" Foreground="{DynamicResource SuccessBrush}" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="LIVE VIEWERS" Style="{StaticResource Label}"/>
+                        <TextBlock x:Name="StatViewers" Text="—" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="StatViewersSub" Text="Connect Twitch to see live count"
+                                   Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0">
                     <StackPanel>
-                        <TextBlock Text="PEAK VIEWERS" Style="{StaticResource Label}"/>
-                        <TextBlock Text="410" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="↑ +8% vs last month" Foreground="{DynamicResource SuccessBrush}" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="FOLLOWERS" Style="{StaticResource Label}"/>
+                        <TextBlock x:Name="StatFollowers" Text="—" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="StatFollowersSub" Text="Connect Twitch to see count"
+                                   Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Style="{StaticResource Card}" Margin="7,0">
                     <StackPanel>
-                        <TextBlock Text="HOURS STREAMED" Style="{StaticResource Label}"/>
-                        <TextBlock Text="18h" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="↑ +5h vs last month" Foreground="{DynamicResource SuccessBrush}" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="NOW PLAYING" Style="{StaticResource Label}"/>
+                        <TextBlock x:Name="StatGame" Text="—" Style="{StaticResource ValueText}" FontSize="16" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="StatGameSub" Text="Current category when live"
+                                   Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="3" Style="{StaticResource Card}" Margin="7,0,0,0">
                     <StackPanel>
-                        <TextBlock Text="NEW FOLLOWERS" Style="{StaticResource Label}"/>
-                        <TextBlock Text="+194" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="↑ +24 vs last month" Foreground="{DynamicResource SuccessBrush}" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="STREAM STATUS" Style="{StaticResource Label}"/>
+                        <TextBlock x:Name="StatStatus" Text="Offline" Style="{StaticResource ValueText}" FontSize="18" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="StatStatusSub" Text="Refreshes every 60 seconds"
+                                   Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <!-- Follower Growth Chart -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
-                    <Canvas x:Name="FollowerChart" Height="160"
-                            ClipToBounds="True"
-                            Loaded="FollowerChart_Loaded"
-                            SizeChanged="FollowerChart_SizeChanged"/>
-                    <Grid Margin="0,6,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Apr 1"  Style="{StaticResource Muted}" HorizontalAlignment="Left"/>
-                        <TextBlock Grid.Column="1" Text="Apr 8"  Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="2" Text="Apr 15" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="3" Text="Apr 22" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="4" Text="Apr 29" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="5" Text="May 6"  Style="{StaticResource Muted}" HorizontalAlignment="Right"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
+            <!-- Charts section — locked for free users -->
+            <Grid>
+                <!-- Chart content (blurred when not Pro) -->
+                <StackPanel x:Name="ChartsContent">
 
-            <!-- Avg vs Peak Viewers Bar Chart -->
-            <Grid Margin="0,0,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="14"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="Avg vs Peak Viewers" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
-                        <Canvas x:Name="ViewerBarChart" Height="140"
-                                Loaded="ViewerBarChart_Loaded"
-                                SizeChanged="ViewerBarChart_SizeChanged"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="2" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="Hours Per Stream" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
-                        <Canvas x:Name="HoursBarChart" Height="140"
-                                Loaded="HoursBarChart_Loaded"
-                                SizeChanged="HoursBarChart_SizeChanged"/>
+                    <!-- Follower Growth Chart -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
+                            <Canvas x:Name="FollowerChart" Height="160"
+                                    ClipToBounds="True"
+                                    Loaded="FollowerChart_Loaded"
+                                    SizeChanged="FollowerChart_SizeChanged"/>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Apr 1"  Style="{StaticResource Muted}" HorizontalAlignment="Left"/>
+                                <TextBlock Grid.Column="1" Text="Apr 8"  Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="Apr 15" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="Apr 22" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="4" Text="Apr 29" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="5" Text="May 6"  Style="{StaticResource Muted}" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Avg vs Peak Viewers Bar Chart -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Avg vs Peak Viewers" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
+                                <Canvas x:Name="ViewerBarChart" Height="140"
+                                        Loaded="ViewerBarChart_Loaded"
+                                        SizeChanged="ViewerBarChart_SizeChanged"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Hours Per Stream" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
+                                <Canvas x:Name="HoursBarChart" Height="140"
+                                        Loaded="HoursBarChart_Loaded"
+                                        SizeChanged="HoursBarChart_SizeChanged"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                </StackPanel>
+
+                <!-- Pro upgrade overlay — visible for free users -->
+                <Border x:Name="ProChartsGate" Visibility="Collapsed"
+                        Background="#D9090912" CornerRadius="10">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                        <TextBlock Text="🔒" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock Text="Unlock 30-day analytics history"
+                                   FontSize="17" FontWeight="Bold"
+                                   Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="Free plan shows live stats only. Upgrade to Pro to see follower growth trends, peak viewer data, and stream hours history."
+                                   FontSize="12" Foreground="#99AABB" HorizontalAlignment="Center"
+                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,0,0,20"/>
+                        <Button Content="Upgrade to Pro →"
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="24,10"
+                                Click="UpgradeAnalytics_Click"/>
                     </StackPanel>
                 </Border>
             </Grid>

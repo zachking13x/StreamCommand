@@ -69,6 +69,13 @@ public class TwitchChatService
         }
     }
 
+    /// <summary>Sends a chat message to the joined channel as the bot user.</summary>
+    public async Task SendMessageAsync(string channel, string message)
+    {
+        if (!IsConnected) return;
+        await IrcSendAsync($"PRIVMSG #{channel.ToLower().TrimStart('#')} :{message}");
+    }
+
     public async Task DisconnectAsync()
     {
         _joinConfirmed = false;

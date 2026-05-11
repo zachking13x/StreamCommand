@@ -6,13 +6,13 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="ZachKramer.StreamCommand"
+    Name="590453723.StreamCommand"
     Publisher="CN=19367528-D63E-434A-8936-D6472D317EDC"
-    Version="1.0.0.0" />
+    Version="1.0.1.0" />
 
   <Properties>
-    <DisplayName>Stream Command</DisplayName>
-    <PublisherDisplayName>Zach Kramer</PublisherDisplayName>
+    <DisplayName>StreamCommand</DisplayName>
+    <PublisherDisplayName>590453723</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
     <Description>Your all-in-one streaming dashboard — connect Twitch chat, control OBS Studio, manage your pre-stream checklist, plan your schedule, and go live with one click.</Description>
   </Properties>

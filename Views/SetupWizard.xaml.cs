@@ -8,6 +8,7 @@ namespace StreamCommand.Views;
 public partial class SetupWizard : Window
 {
     private int _step = 1;
+    private const int TotalSteps = 5;
     private readonly OBSWebSocketService _obsTest = new();
 
     public SetupWizard()
@@ -20,7 +21,7 @@ public partial class SetupWizard : Window
 
     private void Next_Click(object sender, RoutedEventArgs e)
     {
-        if (_step < 4)
+        if (_step < TotalSteps)
             GoToStep(_step + 1);
         else
             Finish();
@@ -33,8 +34,8 @@ public partial class SetupWizard : Window
 
     private void Skip_Click(object sender, RoutedEventArgs e)
     {
-        if (_step < 4)
-            GoToStep(_step + 1);   // skip Twitch or OBS step — always show the Done screen
+        if (_step < TotalSteps)
+            GoToStep(_step + 1);
         else
             Finish();
     }
@@ -47,25 +48,24 @@ public partial class SetupWizard : Window
         Step2.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
         Step3.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
         Step4.Visibility = step == 4 ? Visibility.Visible : Visibility.Collapsed;
+        Step5.Visibility = step == 5 ? Visibility.Visible : Visibility.Collapsed;
 
         BackButton.Visibility = step > 1 ? Visibility.Visible : Visibility.Collapsed;
-
-        SkipButton.Visibility = step is 2 or 3 ? Visibility.Visible : Visibility.Collapsed;
+        SkipButton.Visibility = step is 2 or 3 or 4 ? Visibility.Visible : Visibility.Collapsed;
 
         NextButton.Content = step switch
         {
-            1 => "Let's Go  →",
-            4 => "Open Stream Command  →",
-            _ => "Next  →"
+            1           => "Let's Go  →",
+            TotalSteps  => "Open Stream Command  →",
+            _           => "Next  →"
         };
 
-        if (step == 4)
+        if (step == TotalSteps)
         {
             SaveAndBuildSummary();
             SkipButton.Visibility = Visibility.Collapsed;
         }
 
-        // Colour the step dots
         UpdateDots();
     }
 
@@ -79,9 +79,11 @@ public partial class SetupWizard : Window
         SetDot(Dot2, Dot2Text, 2, accent, done, idle);
         SetDot(Dot3, Dot3Text, 3, accent, done, idle);
         SetDot(Dot4, Dot4Text, 4, accent, done, idle);
+        SetDot(Dot5, Dot5Text, 5, accent, done, idle);
 
         Line2.Fill = _step > 2 ? done : idle;
         Line3.Fill = _step > 3 ? done : idle;
+        Line4.Fill = _step > 4 ? done : idle;
     }
 
     private void SetDot(Border dot, TextBlock? text, int dotStep, Brush accent, Brush done, Brush idle)
@@ -109,29 +111,47 @@ public partial class SetupWizard : Window
     {
         var s = SettingsService.Load();
 
-        // Save whatever the user entered in steps 2 & 3
+        // Twitch (step 2)
         if (!string.IsNullOrWhiteSpace(UsernameBox.Text))
             s.TwitchUsername = UsernameBox.Text.Trim();
         if (ChatTokenBox.Password.Length > 0)
             s.TwitchChatToken = ChatTokenBox.Password;
+
+        // OBS (step 3)
         if (OBSPasswordBox.Password.Length > 0)
             s.OBSWebSocketPassword = OBSPasswordBox.Password;
         if (int.TryParse(OBSPortBox.Text, out var port))
             s.OBSWebSocketPort = port;
-        s.SetupComplete = true;
 
+        // YouTube (step 4)
+        if (!string.IsNullOrWhiteSpace(YoutubeChannelBox.Text))
+            s.YoutubeChannelId = YoutubeChannelBox.Text.Trim();
+        if (YoutubeApiKeyBox.Password.Length > 0)
+            s.YoutubeApiKey = YoutubeApiKeyBox.Password;
+
+        s.SetupComplete = true;
         SettingsService.Save(s);
+
+        // Check if nothing was connected — show warning
+        bool hasTwitch  = !string.IsNullOrWhiteSpace(s.TwitchUsername) && !string.IsNullOrWhiteSpace(s.TwitchChatToken);
+        bool hasOBS     = !string.IsNullOrWhiteSpace(s.OBSWebSocketPassword) || s.OBSWebSocketPort != 4455;
+        bool hasYoutube = !string.IsNullOrWhiteSpace(s.YoutubeChannelId);
+
+        NoConnectionWarning.Visibility = (!hasTwitch && !hasOBS && !hasYoutube)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         // Build a human-friendly summary
         var parts = new System.Collections.Generic.List<string>();
-        if (!string.IsNullOrWhiteSpace(s.TwitchUsername)) parts.Add($"Twitch: @{s.TwitchUsername}");
-        if (!string.IsNullOrWhiteSpace(s.TwitchChatToken)) parts.Add("Chat token saved");
+        if (!string.IsNullOrWhiteSpace(s.TwitchUsername))         parts.Add($"Twitch: @{s.TwitchUsername}");
+        if (!string.IsNullOrWhiteSpace(s.TwitchChatToken))        parts.Add("Chat token saved");
+        if (!string.IsNullOrWhiteSpace(s.YoutubeChannelId))       parts.Add($"YouTube: {s.YoutubeChannelId[..Math.Min(12, s.YoutubeChannelId.Length)]}…");
         if (!string.IsNullOrWhiteSpace(s.OBSWebSocketPassword) || s.OBSWebSocketPort != 4455)
             parts.Add($"OBS WebSocket on port {s.OBSWebSocketPort}");
 
         SetupSummary.Text = parts.Count > 0
             ? string.Join("  ·  ", parts) + "\n\nYou can update anything in Settings at any time."
-            : "You skipped setup — no worries!\nYou can add your credentials in Settings at any time.";
+            : "You skipped setup — no worries!\nAdd your credentials in Settings at any time.";
     }
 
     private void Finish()

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using StreamCommand.Models;
 
 namespace StreamCommand.Services;
 
@@ -30,7 +31,14 @@ public class AppSettings
     public string OBSWebSocketPassword{ get; set; } = ""; // leave blank if OBS has no password set
     public int    OBSWebSocketPort    { get; set; } = 4455;
     public bool   SetupComplete       { get; set; } = false;
-    public List<PlannerEvent> PlannerEvents { get; set; } = new();
+    public List<PlannerEvent>  PlannerEvents { get; set; } = new();
+    public List<ChatCommand>   ChatCommands  { get; set; } = new()
+    {
+        new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
+        new() { Trigger = "!socials",  Response = "Follow me on Twitter and YouTube — links in the channel description!", IsEnabled = true  },
+        new() { Trigger = "!schedule", Response = "Check my Twitch schedule panel for upcoming stream times!", IsEnabled = true  },
+        new() { Trigger = "!lurk",     Response = "Thanks for the lurk! Every viewer counts 👀", IsEnabled = true  },
+    };
 }
 
 public static class SettingsService

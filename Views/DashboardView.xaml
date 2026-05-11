@@ -14,7 +14,22 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Ready to Stream?" Style="{StaticResource SectionHeader}" FontSize="18"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="Ready to Stream?" Style="{StaticResource SectionHeader}" FontSize="18" Margin="0,0,12,0"/>
+                            <!-- OBS connection status pill -->
+                            <Border x:Name="OBSPill"
+                                    Background="#1A1A2E" BorderBrush="#EF4444"
+                                    BorderThickness="1" CornerRadius="12"
+                                    Padding="8,3" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="OBSPillDot" Width="6" Height="6"
+                                             Fill="#EF4444" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="OBSPillText" Text="OBS: Disconnected"
+                                               Foreground="#EF4444" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                         <TextBlock Text="Launch your stream with one click and manage everything from here."
                                    Style="{StaticResource Muted}" Margin="0,4,0,0"/>
                     </StackPanel>
@@ -74,6 +89,44 @@
                     </StackPanel>
                 </Border>
             </Grid>
+
+            <!-- Pre-Stream Checklist Progress -->
+            <Border x:Name="ChecklistCard" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="Pre-Stream Checklist" Style="{StaticResource SectionHeader}" Margin="0,0,12,0"/>
+                            <Border x:Name="ChecklistBadge"
+                                    Background="#2E1065" BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" CornerRadius="10" Padding="8,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="ChecklistBadgeText" Text="0 / 19"
+                                           Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="SemiBold"/>
+                            </Border>
+                        </StackPanel>
+                        <ProgressBar x:Name="ChecklistProgressBar"
+                                     Minimum="0" Maximum="100" Value="0"
+                                     Height="6"
+                                     Foreground="{DynamicResource AccentBrush}"
+                                     Background="{DynamicResource BorderBrush}"
+                                     Margin="0,0,0,4"/>
+                        <TextBlock x:Name="ChecklistSubText"
+                                   Text="Open checklist to start your pre-stream setup"
+                                   Style="{StaticResource Muted}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Open Checklist →"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="14,8"
+                            VerticalAlignment="Center"
+                            Click="OpenChecklist_Click"/>
+                </Grid>
+            </Border>
 
             <!-- Chart + Upcoming -->
             <Grid Margin="0,0,0,14">

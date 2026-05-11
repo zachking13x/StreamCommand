@@ -40,13 +40,28 @@
         <Grid Grid.Row="0" Margin="0,0,0,14">
             <StackPanel>
                 <TextBlock Text="Automation" Style="{StaticResource SectionHeader}" FontSize="18"/>
-                <TextBlock Text="Set up automatic responses and actions for stream events"
-                           Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                           Text="Rules fire automatically through your connected Twitch Chat Token in real time. Toggle any rule on or off instantly."/>
+                <!-- Free tier limit notice -->
+                <Border x:Name="FreeLimitBanner" Visibility="Collapsed"
+                        Background="#1A0F3A" BorderBrush="{DynamicResource AccentBorder}"
+                        BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔒  Free plan: 3 active rules max. "
+                                   Foreground="{DynamicResource AccentLight}" FontSize="12"/>
+                        <TextBlock Text="Upgrade to Pro for unlimited rules →"
+                                   Foreground="{DynamicResource AccentLight}" FontSize="12"
+                                   FontWeight="SemiBold" Cursor="Hand"
+                                   MouseLeftButtonUp="UpgradeBanner_Click"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
-            <Button Content="+ New Rule"
+            <Button x:Name="NewRuleButton"
+                    Content="+ New Rule"
                     Style="{StaticResource PrimaryButton}"
                     HorizontalAlignment="Right"
-                    VerticalAlignment="Center"/>
+                    VerticalAlignment="Top"
+                    Click="NewRule_Click"/>
         </Grid>
 
         <!-- Rules by Category -->

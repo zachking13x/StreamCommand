@@ -23,7 +23,7 @@
     <AppxBundle>Always</AppxBundle>
     <PackageCertificateKeyFile>StreamCommandPackage_TemporaryKey.pfx</PackageCertificateKeyFile>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>06DAAE0F7296595909EFD65593EBA25F71653D96</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>8285838471AFCFA52F4F56A261D0B04F9EEF80EE</PackageCertificateThumbprint>
     <PackageCertificatePassword>TempStore1!</PackageCertificatePassword>
     <GenerateAppxPackageOnBuild>False</GenerateAppxPackageOnBuild>
     <AppxBundlePlatforms>x64</AppxBundlePlatforms>

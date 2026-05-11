@@ -61,11 +61,21 @@
             <!-- API Keys -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
-                    <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="API Keys" Style="{StaticResource SectionHeader}"/>
-                        <TextBlock Text="Stored locally on your device only — never sent to any server."
-                                   Style="{StaticResource Muted}" Margin="0,3,0,0"/>
-                    </StackPanel>
+                    <TextBlock Text="API Keys" Style="{StaticResource SectionHeader}" Margin="0,0,0,10"/>
+
+                    <!-- Privacy banner — prominent -->
+                    <Border Background="#0D1E1A" BorderBrush="#22C55E"
+                            BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔒" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <StackPanel>
+                                <TextBlock Text="Your keys stay on your device — always."
+                                           Foreground="#86EFAC" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap"
+                                           Text="API keys are saved only in a local JSON file on this PC. Stream Command never transmits them to any server, cloud, or third party."/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
                     <StackPanel Margin="0,0,0,10">
                         <TextBlock Text="Twitch Client ID" Style="{StaticResource Label}" Margin="0,0,0,4"/>
@@ -224,6 +234,26 @@
                         <Border Width="28" Height="28" CornerRadius="14" Cursor="Hand">
                             <Border.Background><SolidColorBrush Color="#EA580C"/></Border.Background>
                         </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Privacy Statement -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="🛡️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Privacy — Plain English" Style="{StaticResource SectionHeader}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Foreground="{DynamicResource SecondaryText}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="Stream Command does not collect, transmit, or sell your data. Here's exactly what we do and don't do:"/>
+                    <StackPanel Margin="0,0,0,4">
+                        <TextBlock Text="✅  API keys and tokens → saved only on this PC, in a local file" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="✅  Stream analytics → loaded directly from Twitch's API to your screen" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="✅  Chat messages → streamed from Twitch IRC directly to this app" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="✅  Your subscription status → checked via the Microsoft Store only" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="❌  We do NOT have a backend server receiving your data" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="❌  We do NOT share anything with third parties" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

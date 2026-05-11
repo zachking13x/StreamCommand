@@ -122,6 +122,9 @@ public partial class PreStreamView : UserControl
         ProgressBar.Value    = pct;
         ProgressLabel.Text   = $"{done} / {total} tasks complete";
         ProgressPct.Text     = $"{pct:F0}%";
+
+        // Broadcast to Dashboard summary card
+        StreamEvents.RaiseChecklistProgress(done, total);
     }
 
     private void Reset_Click(object sender, RoutedEventArgs e)

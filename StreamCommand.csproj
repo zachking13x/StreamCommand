@@ -22,6 +22,7 @@
     <!-- Produce a self-contained single-folder publish for packaging -->
     <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>false</SelfContained>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

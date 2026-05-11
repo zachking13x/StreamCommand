@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Stream Command — First-Time Setup"
-        Width="620" Height="550"
+        Width="620" Height="580"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBackground}"
@@ -16,27 +16,32 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- ══ Step Indicator ══ -->
+        <!-- ══ Step Indicator (5 steps) ══ -->
         <StackPanel Grid.Row="0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,22,0,18">
 
                 <Border x:Name="Dot1" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="1" Foreground="White" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <Rectangle Width="44" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                <Rectangle Width="36" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
 
                 <Border x:Name="Dot2" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource BorderBrush}">
                     <TextBlock x:Name="Dot2Text" Text="2" Foreground="{DynamicResource MutedText}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <Rectangle x:Name="Line2" Width="44" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                <Rectangle x:Name="Line2" Width="36" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
 
                 <Border x:Name="Dot3" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource BorderBrush}">
                     <TextBlock x:Name="Dot3Text" Text="3" Foreground="{DynamicResource MutedText}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <Rectangle x:Name="Line3" Width="44" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                <Rectangle x:Name="Line3" Width="36" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
 
                 <Border x:Name="Dot4" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource BorderBrush}">
                     <TextBlock x:Name="Dot4Text" Text="4" Foreground="{DynamicResource MutedText}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Rectangle x:Name="Line4" Width="36" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
+
+                <Border x:Name="Dot5" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource BorderBrush}">
+                    <TextBlock x:Name="Dot5Text" Text="5" Foreground="{DynamicResource MutedText}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
             </StackPanel>
@@ -64,8 +69,6 @@
 
                 <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16,14">
                     <StackPanel>
-
-                        <!-- Feature row 1 -->
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🟣" FontSize="18" Width="30" VerticalAlignment="Center"/>
                             <StackPanel Margin="8,0,0,0">
@@ -73,8 +76,6 @@
                                 <TextBlock Text="See live chat, sub alerts, and raids in the app" Foreground="{DynamicResource MutedText}" FontSize="12"/>
                             </StackPanel>
                         </StackPanel>
-
-                        <!-- Feature row 2 -->
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <TextBlock Text="🎬" FontSize="18" Width="30" VerticalAlignment="Center"/>
                             <StackPanel Margin="8,0,0,0">
@@ -82,16 +83,20 @@
                                 <TextBlock Text="Start and stop your stream directly from Stream Command" Foreground="{DynamicResource MutedText}" FontSize="12"/>
                             </StackPanel>
                         </StackPanel>
-
-                        <!-- Feature row 3 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="🔴" FontSize="18" Width="30" VerticalAlignment="Center"/>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="Connect YouTube (optional)" Foreground="{DynamicResource PrimaryText}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="See YouTube stats alongside Twitch — manage both platforms" Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                            </StackPanel>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <TextBlock Text="🚀" FontSize="18" Width="30" VerticalAlignment="Center"/>
                             <StackPanel Margin="8,0,0,0">
                                 <TextBlock Text="Go Live with one click" Foreground="{DynamicResource PrimaryText}" FontSize="13" FontWeight="SemiBold"/>
-                                <TextBlock Text="Everything wired up — Dashboard, Planner, Checklist, and more" Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                                <TextBlock Text="Dashboard, Planner, Checklist, Analytics — all wired up" Foreground="{DynamicResource MutedText}" FontSize="12"/>
                             </StackPanel>
                         </StackPanel>
-
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -132,16 +137,12 @@
                 <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16,14" Margin="0,0,0,14">
                     <StackPanel>
                         <TextBlock Text="Enable in OBS (one-time, 30 seconds):" Foreground="{DynamicResource PrimaryText}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,12"/>
-
-                        <!-- Step 1 -->
                         <StackPanel Orientation="Horizontal">
                             <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentMuted}" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <TextBlock Text="1" Foreground="{DynamicResource AccentLight}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="Open OBS Studio" Foreground="{DynamicResource SecondaryText}" FontSize="13" VerticalAlignment="Center"/>
                         </StackPanel>
-
-                        <!-- Step 2 -->
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentMuted}" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <TextBlock Text="2" Foreground="{DynamicResource AccentLight}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -150,8 +151,6 @@
                                 Click <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryText}">Tools</Run> in the top menu bar
                             </TextBlock>
                         </StackPanel>
-
-                        <!-- Step 3 -->
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentMuted}" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <TextBlock Text="3" Foreground="{DynamicResource AccentLight}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -160,8 +159,6 @@
                                 Select <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryText}">WebSocket Server Settings</Run>
                             </TextBlock>
                         </StackPanel>
-
-                        <!-- Step 4 -->
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource AccentMuted}" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <TextBlock Text="4" Foreground="{DynamicResource AccentLight}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -170,7 +167,6 @@
                                 Check <Run FontWeight="SemiBold" Foreground="{DynamicResource PrimaryText}">Enable WebSocket Server</Run> and click OK
                             </TextBlock>
                         </StackPanel>
-
                     </StackPanel>
                 </Border>
 
@@ -201,8 +197,58 @@
                            Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,10,0,0"/>
             </StackPanel>
 
-            <!-- STEP 4 — Done -->
+            <!-- STEP 4 — YouTube (NEW) -->
             <StackPanel x:Name="Step4" Visibility="Collapsed" VerticalAlignment="Center">
+                <TextBlock Text="🔴  Connect YouTube (Optional)" Foreground="{DynamicResource PrimaryText}" FontSize="20" FontWeight="Bold" Margin="0,0,0,6"/>
+                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,22"
+                           Text="See your YouTube channel stats alongside Twitch analytics. Manage both platforms from one dashboard."/>
+
+                <TextBlock Text="YOUTUBE CHANNEL ID" Foreground="{DynamicResource LabelText}" FontSize="11" Margin="0,0,0,5"/>
+                <TextBox x:Name="YoutubeChannelBox" Style="{StaticResource ModernTextBox}" Margin="0,0,0,6"/>
+                <Border Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="💡  " Foreground="{DynamicResource AccentLight}" FontSize="12"/>
+                        <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" TextWrapping="Wrap">
+                            Found in <Run Foreground="{DynamicResource AccentLight}" FontWeight="SemiBold">YouTube Studio → Settings → Channel → Advanced</Run>. Starts with "UC".
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="YOUTUBE API KEY (optional)" Foreground="{DynamicResource LabelText}" FontSize="11" Margin="0,0,0,5"/>
+                <PasswordBox x:Name="YoutubeApiKeyBox" Background="{DynamicResource InputBackground}" Foreground="{DynamicResource PrimaryText}"
+                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="10,6" FontSize="13" Margin="0,0,0,6"/>
+                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,20"
+                           Text="Enables live subscriber count. Get a free key from Google Cloud Console → YouTube Data API v3."/>
+
+                <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                    <StackPanel>
+                        <TextBlock Text="✅  What you get with YouTube connected:" Foreground="{DynamicResource PrimaryText}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="·  Subscriber count on Analytics page" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="·  Platform badge on Planner events" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,2"/>
+                        <TextBlock Text="·  Quick-launch links to YouTube Studio" Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="You can skip this — add YouTube credentials in Settings at any time."
+                           Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,12,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- STEP 5 — Done -->
+            <StackPanel x:Name="Step5" Visibility="Collapsed" VerticalAlignment="Center">
+
+                <!-- No-connections warning (shown when nothing was set up) -->
+                <Border x:Name="NoConnectionWarning" Visibility="Collapsed"
+                        Background="#2D1B00" BorderBrush="#F59E0B"
+                        BorderThickness="1" CornerRadius="8"
+                        Padding="14,12" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="⚠  No connections set up yet"
+                                   Foreground="#FCD34D" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock Foreground="#FCD34D" Opacity="0.8" FontSize="12" TextWrapping="Wrap"
+                                   Text="Stream Command works best when Twitch Chat or OBS is connected. You can set these up now from Settings → API Keys or Settings → OBS Connection."/>
+                    </StackPanel>
+                </Border>
+
                 <Border Width="64" Height="64" CornerRadius="32" HorizontalAlignment="Center" Margin="0,0,0,18"
                         Background="#14401A" BorderBrush="#22C55E" BorderThickness="2">
                     <TextBlock Text="✓" Foreground="#86EFAC" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>

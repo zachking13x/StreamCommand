@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using StreamCommand.Services;
 
 namespace StreamCommand.Views;
@@ -11,6 +12,10 @@ public partial class LiveControlView : UserControl
     private bool _isLive;
     private bool _micOn = true;
     private bool _camOn = true;
+
+    // Stream timer
+    private readonly DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private DateTime _streamStartTime;
 
     // Fallback scenes shown before OBS connects — replaced with real OBS scenes on connect
     private static readonly string[] _fallbackScenes =
@@ -41,6 +46,13 @@ public partial class LiveControlView : UserControl
                 BuildSceneButtons(_scenes);
             });
 
+        // Stream timer tick
+        _streamTimer.Tick += (_, _) =>
+        {
+            var elapsed = DateTime.Now - _streamStartTime;
+            StreamTimerText.Text = $"⏱  {(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+        };
+
         // Try auto-connect on load (works if OBS is already open with no password)
         Loaded += async (_, _) => await TryConnectOBSAsync();
     }
@@ -70,6 +82,8 @@ public partial class LiveControlView : UserControl
                 ConnectOBSButton.IsEnabled = false;
                 GoLiveButton.IsEnabled    = true;
                 StreamStatusText.Text     = "OBS connected — ready to go live";
+                OfflineBanner.Visibility  = Visibility.Collapsed;
+                StreamEvents.RaiseOBSState(true);
                 break;
 
             case OBSState.Connecting:
@@ -83,6 +97,8 @@ public partial class LiveControlView : UserControl
                 ConnectOBSButton.Content  = "⚡  Connect OBS";
                 ConnectOBSButton.IsEnabled = true;
                 GoLiveButton.IsEnabled    = false;
+                OfflineBanner.Visibility  = Visibility.Visible;
+                StreamEvents.RaiseOBSState(false);
                 if (state == OBSState.Disconnected && _isLive)
                 {
                     _isLive = false;
@@ -108,34 +124,77 @@ public partial class LiveControlView : UserControl
         GoLiveButton.IsEnabled = false;
 
         if (!_isLive)
-            await _obs.StartStreamAsync();
-        else
-            await _obs.StopStreamAsync();
+        {
+            var confirm = MessageBox.Show(
+                "Ready to go live?\n\nDouble-check your scene, audio levels, and game before starting.",
+                "Go Live",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
 
-        // OBS will fire StreamingStateChanged to update the UI
-        // Re-enable after a short guard to prevent double-clicks
+            if (confirm != MessageBoxResult.Yes)
+            {
+                GoLiveButton.IsEnabled = true;
+                return;
+            }
+
+            await _obs.StartStreamAsync();
+            StreamEvents.RaiseAlert("🔴", "You are now LIVE! Good luck out there!");
+        }
+        else
+        {
+            var confirm = MessageBox.Show(
+                "End your stream?",
+                "End Stream",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes)
+            {
+                GoLiveButton.IsEnabled = true;
+                return;
+            }
+
+            await _obs.StopStreamAsync();
+            StreamEvents.RaiseAlert("⏹", "Stream ended. Great stream!");
+        }
+
+        // OBS fires StreamingStateChanged to update UI
         await System.Threading.Tasks.Task.Delay(1500);
         GoLiveButton.IsEnabled = true;
     }
 
     private void SetLiveUI()
     {
-        GoLiveButton.Content = "⏹   End Stream";
-        GoLiveButton.Style   = (Style)FindResource("LiveButton");   // red template — no Background fight
+        GoLiveButton.Content    = "⏹   End Stream";
+        GoLiveButton.Style      = (Style)FindResource("LiveButton");
         StreamStatusText.Text   = "🔴  You are LIVE — broadcasting now";
         LiveIndicatorBg.Color   = Color.FromRgb(0x7F, 0x1D, 0x1D);
         LiveDot.Foreground      = (Brush)FindResource("LiveBrush");
         OfflineBanner.Visibility = Visibility.Collapsed;
+
+        // Start stream timer
+        _streamStartTime = DateTime.Now;
+        StreamTimerText.Visibility = Visibility.Visible;
+        _streamTimer.Start();
+
+        StreamEvents.RaiseStreamState(true);
     }
 
     private void ResetLiveUI()
     {
-        GoLiveButton.Content = "▶   Go Live";
-        GoLiveButton.Style   = (Style)FindResource("PrimaryButton");  // purple template
+        GoLiveButton.Content    = "▶   Go Live";
+        GoLiveButton.Style      = (Style)FindResource("PrimaryButton");
         StreamStatusText.Text   = "OBS connected — ready to go live";
         LiveIndicatorBg.Color   = Color.FromRgb(0x2E, 0x10, 0x65);
         LiveDot.Foreground      = (Brush)FindResource("AccentLight");
         OfflineBanner.Visibility = Visibility.Visible;
+
+        // Stop stream timer
+        _streamTimer.Stop();
+        StreamTimerText.Visibility = Visibility.Collapsed;
+        StreamTimerText.Text       = "";
+
+        StreamEvents.RaiseStreamState(false);
     }
 
     // ── Scene buttons ────────────────────────────────────────────────────────
@@ -212,6 +271,11 @@ public partial class LiveControlView : UserControl
             ? (Brush)FindResource("SecondaryText")
             : (Brush)FindResource("DangerBrush");
     }
+
+    // ── Settings navigation ──────────────────────────────────────────────────
+
+    private void GoToOBSSettings_Click(object sender, RoutedEventArgs e)
+        => MainWindow.NavigateTo?.Invoke("settings");
 
     // ── Launch streaming app ─────────────────────────────────────────────────
 

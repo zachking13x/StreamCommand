@@ -28,10 +28,11 @@ public partial class PlannerView : UserControl
 
         if (s.PlannerEvents.Count == 0)
         {
-            // First run — seed with example data so the view isn't empty
-            _events.Add(new StreamEvent { Title = "Ranked Grind — Road to Diamond",   Platform = "Twitch",  StreamDateTime = new DateTime(2026, 5, 8, 19, 0, 0), Duration = "3h", Notes = "Focus on support play" });
-            _events.Add(new StreamEvent { Title = "Friday Night Warzone with Subs",   Platform = "Twitch",  StreamDateTime = new DateTime(2026, 5, 9, 20, 0, 0), Duration = "4h", Notes = "Sub games night" });
-            _events.Add(new StreamEvent { Title = "Chill Minecraft Building Session", Platform = "YouTube", StreamDateTime = new DateTime(2026, 5,10, 15, 0, 0), Duration = "2h", Notes = "Sky island build" });
+            // Seed with future-relative example data so the view is never empty and dates stay valid
+            var today = DateTime.Today;
+            _events.Add(new StreamEvent { Title = "Ranked Grind — Road to Diamond",   Platform = "Twitch",  StreamDateTime = today.AddDays(2).AddHours(19), Duration = "3h", Notes = "Focus on support play" });
+            _events.Add(new StreamEvent { Title = "Friday Night Warzone with Subs",   Platform = "Twitch",  StreamDateTime = today.AddDays(4).AddHours(20), Duration = "4h", Notes = "Sub games night" });
+            _events.Add(new StreamEvent { Title = "Chill Minecraft Building Session", Platform = "YouTube", StreamDateTime = today.AddDays(6).AddHours(15), Duration = "2h", Notes = "Sky island build" });
             SaveEvents();
         }
         else

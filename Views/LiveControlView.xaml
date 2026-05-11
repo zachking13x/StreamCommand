@@ -37,6 +37,12 @@
                                        Text="Connect OBS to enable Go Live"
                                        Style="{StaticResource Muted}"
                                        Margin="0,3,0,0"/>
+                            <TextBlock x:Name="StreamTimerText"
+                                       Text=""
+                                       Foreground="{DynamicResource AccentLight}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Margin="0,4,0,0"
+                                       Visibility="Collapsed"/>
                         </StackPanel>
 
                         <!-- Connect OBS button -->
@@ -167,20 +173,63 @@
                 </StackPanel>
             </Border>
 
-            <!-- Offline Banner -->
+            <!-- Offline / Setup Guide Banner -->
             <Border x:Name="OfflineBanner"
-                    Style="{StaticResource Card}"
+                    Background="#1A0F3A"
+                    BorderBrush="{DynamicResource AccentBorder}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="20,16"
                     Margin="0,14,0,0">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,20">
-                    <TextBlock Text="⚠" FontSize="32" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource MutedText}" Margin="0,0,0,8"/>
-                    <TextBlock Text="You're offline — connect OBS then hit Go Live."
-                               Foreground="{DynamicResource SecondaryText}"
-                               FontSize="14" HorizontalAlignment="Center"/>
-                    <TextBlock Text="In OBS: Tools → WebSocket Server Settings → Enable WebSocket Server"
-                               Style="{StaticResource Muted}"
-                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="160"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Connect OBS to enable stream control"
+                                   Foreground="{DynamicResource AccentLight}"
+                                   FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <!-- Steps -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
+                                    Width="18" Height="18" Margin="0,0,8,0">
+                                <TextBlock Text="1" Foreground="White" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="In OBS: Tools → WebSocket Server Settings → tick Enable"
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
+                                    Width="18" Height="18" Margin="0,0,8,0">
+                                <TextBlock Text="2" Foreground="White" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Set your port + password in Settings → OBS Connection"
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
+                                    Width="18" Height="18" Margin="0,0,8,0">
+                                <TextBlock Text="3" Foreground="White" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Click ⚡ Connect OBS above — scenes load automatically"
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Open OBS Settings →"
+                            Style="{StaticResource SecondaryButton}"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right"
+                            Padding="14,8"
+                            Click="GoToOBSSettings_Click"/>
+                </Grid>
             </Border>
 
         </StackPanel>

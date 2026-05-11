@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using StreamCommand.Models;
+using StreamCommand.Services;
 
 namespace StreamCommand.Views;
 
@@ -14,11 +17,18 @@ public class AutomationCategory
 
 public partial class AutomationView : UserControl
 {
+    private const int FreeRuleLimit = 3;
+    private List<AutomationRule> _allRules = new();
+
     public AutomationView()
     {
         InitializeComponent();
+        Loaded += (_, _) => RefreshView();
+    }
 
-        var rules = new List<AutomationRule>
+    private void RefreshView()
+    {
+        _allRules = new List<AutomationRule>
         {
             new() { Category="Followers",    Trigger="New follower",               Action="Send \"Thanks for the follow, @user! 🎉\"",                IsEnabled=true  },
             new() { Category="Subscribers",  Trigger="New subscriber",             Action="Play subscriber alert sound + on-screen animation",         IsEnabled=true  },
@@ -32,11 +42,49 @@ public partial class AutomationView : UserControl
             new() { Category="Milestones",   Trigger="Viewer count hits 100",      Action="Celebrate milestone in chat",                              IsEnabled=false },
         };
 
-        var categories = rules
+        bool isPro = EntitlementService.IsPro;
+
+        // Show free limit banner if not Pro
+        FreeLimitBanner.Visibility = !isPro ? Visibility.Visible : Visibility.Collapsed;
+
+        // Lock rules beyond the free limit for non-Pro users
+        if (!isPro)
+        {
+            int count = 0;
+            foreach (var rule in _allRules)
+            {
+                if (rule.IsEnabled) count++;
+                if (count > FreeRuleLimit) rule.IsEnabled = false;
+            }
+        }
+
+        var categories = _allRules
             .GroupBy(r => r.Category)
             .Select(g => new AutomationCategory { Category = g.Key, Rules = new(g) })
             .ToList();
 
         CategoriesControl.ItemsSource = categories;
+    }
+
+    private void NewRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EntitlementService.IsPro && _allRules.Count(r => r.IsEnabled) >= FreeRuleLimit)
+        {
+            var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+            win.ShowDialog();
+            return;
+        }
+
+        MessageBox.Show(
+            "New rule builder coming in the next update!\n\nFor now, toggle existing rules on/off to customise your automation.",
+            "New Rule",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private void UpgradeBanner_Click(object sender, MouseButtonEventArgs e)
+    {
+        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+        win.ShowDialog();
     }
 }
