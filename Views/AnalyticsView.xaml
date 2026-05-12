@@ -1,6 +1,7 @@
 <UserControl x:Class="StreamCommand.Views.AnalyticsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:StreamCommand.Views"
              Background="{DynamicResource AppBackground}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -130,12 +131,9 @@
                                    Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBlock Text="Free plan shows live stats only. Upgrade to Pro to see follower growth trends, peak viewer data, and stream hours history."
                                    FontSize="12" Foreground="#99AABB" HorizontalAlignment="Center"
-                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,0,0,20"/>
-                        <Button Content="Upgrade to Pro →"
-                                HorizontalAlignment="Center"
-                                Style="{StaticResource PrimaryButton}"
-                                Padding="24,10"
-                                Click="UpgradeAnalytics_Click"/>
+                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360" Margin="0,0,0,16"/>
+                        <local:ProGateBanner FeatureLabel="Full analytics history — 30-day follower growth, peak viewers, and stream hours"
+                                             MaxWidth="420" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>

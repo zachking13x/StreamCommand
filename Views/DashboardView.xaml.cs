@@ -5,15 +5,19 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using StreamCommand.Services;
 
 namespace StreamCommand.Views;
 
 public partial class DashboardView : UserControl
 {
-    private readonly int[] _viewerData = { 280, 295, 310, 302, 318, 308, 325, 305, 315, 300, 320 };
+    // Fallback placeholder data — used when not connected to Twitch
+    private static readonly int[] _placeholderData = { 280, 295, 310, 302, 318, 308, 325, 305, 315, 300, 320 };
 
-    // Populated at load time from the Planner's persisted events — not hardcoded
+    // Live viewer history — populated each minute while stream is live (max 20 points)
+    private readonly List<int> _liveViewerHistory = new();
+    private DispatcherTimer? _viewerPollTimer;
 
     private readonly List<(string Label, string Url, string Emoji)> _quickLinks = new()
     {
@@ -24,26 +28,141 @@ public partial class DashboardView : UserControl
         ("StreamElements",    "https://streamelements.com/dashboard",     "🟠")
     };
 
+    // Milestone thresholds — celebrated once per threshold, stored in AppSettings
+    private static readonly int[] _milestones = { 100, 500, 1000, 5000, 10000, 15000 };
+
     public DashboardView()
     {
         InitializeComponent();
-        Loaded += (_, _) => BuildUpcomingList();   // load after layout so FindResource works
+
+        // Load after layout so FindResource works
+        Loaded += async (_, _) =>
+        {
+            BuildUpcomingList();
+            await RefreshFollowerCountAsync();
+        };
+
         BuildQuickLaunch();
 
-        // Subscribe to OBS state changes from LiveControlView
+        // OBS state changes
         StreamEvents.OBSStateChanged += isConnected =>
             Dispatcher.Invoke(() => UpdateOBSPill(isConnected));
 
-        // Subscribe to checklist progress changes from PreStreamView
+        // Checklist progress
         StreamEvents.ChecklistProgressChanged += (done, total) =>
             Dispatcher.Invoke(() => UpdateChecklistCard(done, total));
+
+        // Planner data changes — refresh the upcoming list live
+        StreamEvents.PlannerChanged += () =>
+            Dispatcher.Invoke(BuildUpcomingList);
+
+        // Start/stop live viewer polling when stream goes live or offline
+        StreamEvents.StreamStateChanged += isLive =>
+            Dispatcher.Invoke(() => OnStreamStateChanged(isLive));
     }
+
+    // ── Follower count + milestone check ─────────────────────────────────────
+
+    private async System.Threading.Tasks.Task RefreshFollowerCountAsync()
+    {
+        var s = SettingsService.Load();
+        if (string.IsNullOrWhiteSpace(s.TwitchUsername) ||
+            string.IsNullOrWhiteSpace(s.TwitchClientId)  ||
+            string.IsNullOrWhiteSpace(s.TwitchChatToken))
+            return;
+
+        var stats = await TwitchApiService.GetChannelStatsAsync(
+            s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
+        if (stats == null) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            if (stats.FollowerCount >= 0)
+            {
+                FollowerCountText.Text = stats.FollowerCount.ToString("N0");
+                FollowerSubText.Text   = "Total followers";
+            }
+
+            if (stats.IsLive)
+                LiveViewersText.Text = stats.ViewerCount.ToString("N0");
+
+            CheckMilestones(stats.FollowerCount);
+        });
+    }
+
+    private static void CheckMilestones(int followerCount)
+    {
+        if (followerCount <= 0) return;
+        var s = SettingsService.Load();
+        bool changed = false;
+
+        foreach (var threshold in _milestones)
+        {
+            if (followerCount < threshold) continue;
+            var label = threshold.ToString();
+            if (s.CelebratedMilestones.Contains(label)) continue;
+
+            s.CelebratedMilestones.Add(label);
+            changed = true;
+
+            ShowToast(
+                $"🎉  {threshold:N0} followers!",
+                $"You hit {threshold:N0} followers! Congratulations — open Stream Command to celebrate.");
+        }
+
+        if (changed) SettingsService.Save(s);
+    }
+
+    // ── Live viewer chart polling ─────────────────────────────────────────────
+
+    private void OnStreamStateChanged(bool isLive)
+    {
+        if (isLive)
+        {
+            _liveViewerHistory.Clear();
+            _viewerPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+            _viewerPollTimer.Tick += async (_, _) => await PollViewerCountAsync();
+            _viewerPollTimer.Start();
+        }
+        else
+        {
+            _viewerPollTimer?.Stop();
+            _viewerPollTimer = null;
+            _liveViewerHistory.Clear();
+            DrawChart();   // revert to placeholder when offline
+        }
+    }
+
+    private async System.Threading.Tasks.Task PollViewerCountAsync()
+    {
+        var s = SettingsService.Load();
+        if (string.IsNullOrWhiteSpace(s.TwitchUsername) ||
+            string.IsNullOrWhiteSpace(s.TwitchClientId)  ||
+            string.IsNullOrWhiteSpace(s.TwitchChatToken)) return;
+
+        var stats = await TwitchApiService.GetChannelStatsAsync(
+            s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
+        if (stats == null) return;
+
+        Dispatcher.Invoke(() =>
+        {
+            if (!stats.IsLive) return;
+
+            LiveViewersText.Text = stats.ViewerCount.ToString("N0");
+            _liveViewerHistory.Add(stats.ViewerCount);
+            if (_liveViewerHistory.Count > 20)
+                _liveViewerHistory.RemoveAt(0);
+            DrawChart();
+        });
+    }
+
+    // ── Checklist card ────────────────────────────────────────────────────────
 
     private void UpdateChecklistCard(int done, int total)
     {
         double pct = total > 0 ? done * 100.0 / total : 0;
-        ChecklistProgressBar.Value  = pct;
-        ChecklistBadgeText.Text     = $"{done} / {total}";
+        ChecklistProgressBar.Value = pct;
+        ChecklistBadgeText.Text    = $"{done} / {total}";
 
         if (done == 0)
             ChecklistSubText.Text = "Open checklist to start your pre-stream setup";
@@ -52,11 +171,10 @@ public partial class DashboardView : UserControl
         else
             ChecklistSubText.Text = $"{total - done} task{(total - done == 1 ? "" : "s")} remaining before you go live";
 
-        // Badge turns green when complete
         if (done == total && total > 0)
         {
-            ChecklistBadge.Background  = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
-            ChecklistBadge.BorderBrush = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            ChecklistBadge.Background     = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
+            ChecklistBadge.BorderBrush    = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
             ChecklistBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC));
         }
     }
@@ -64,29 +182,32 @@ public partial class DashboardView : UserControl
     private void OpenChecklist_Click(object sender, RoutedEventArgs e)
         => MainWindow.NavigateTo?.Invoke("pre-stream");
 
+    // ── OBS pill ──────────────────────────────────────────────────────────────
+
     private void UpdateOBSPill(bool isConnected)
     {
-        var connectedColor = Color.FromRgb(0x22, 0xC5, 0x5E);
+        var connectedColor    = Color.FromRgb(0x22, 0xC5, 0x5E);
         var disconnectedColor = Color.FromRgb(0xEF, 0x44, 0x44);
-        var c = isConnected ? connectedColor : disconnectedColor;
+        var c     = isConnected ? connectedColor : disconnectedColor;
         var brush = new SolidColorBrush(c);
 
-        OBSPill.BorderBrush = brush;
-        OBSPillDot.Fill = brush;
+        OBSPill.BorderBrush    = brush;
+        OBSPillDot.Fill        = brush;
         OBSPillText.Foreground = brush;
-        OBSPillText.Text = isConnected ? "OBS: Connected ✓" : "OBS: Disconnected";
-        OBSPill.Background = isConnected
+        OBSPillText.Text       = isConnected ? "OBS: Connected ✓" : "OBS: Disconnected";
+        OBSPill.Background     = isConnected
             ? new SolidColorBrush(Color.FromArgb(0x20, 0x22, 0xC5, 0x5E))
             : new SolidColorBrush(Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
     }
+
+    // ── Upcoming streams ──────────────────────────────────────────────────────
 
     private void BuildUpcomingList()
     {
         UpcomingList.Children.Clear();
 
-        // Read live from Planner — future streams only, max 3 shown
-        var s       = SettingsService.Load();
-        var now     = DateTime.Now;
+        var s        = SettingsService.Load();
+        var now      = DateTime.Now;
         var upcoming = s.PlannerEvents
                         .Where(e => e.When > now)
                         .OrderBy(e => e.When)
@@ -97,9 +218,9 @@ public partial class DashboardView : UserControl
         {
             UpcomingList.Children.Add(new TextBlock
             {
-                Text       = "No upcoming streams — add one in the Planner",
-                Foreground = (Brush)FindResource("MutedText"),
-                FontSize   = 12,
+                Text         = "No upcoming streams — add one in the Planner",
+                Foreground   = (Brush)FindResource("MutedText"),
+                FontSize     = 12,
                 TextWrapping = TextWrapping.Wrap
             });
             return;
@@ -147,6 +268,8 @@ public partial class DashboardView : UserControl
         }
     }
 
+    // ── Quick launch ──────────────────────────────────────────────────────────
+
     private void BuildQuickLaunch()
     {
         foreach (var (label, url, emoji) in _quickLinks)
@@ -155,8 +278,8 @@ public partial class DashboardView : UserControl
             var btn = new Button
             {
                 Content = $"{emoji}  {label}",
-                Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 0, 8, 8),
+                Style   = (Style)FindResource("SecondaryButton"),
+                Margin  = new Thickness(0, 0, 8, 8),
                 Padding = new Thickness(14, 8, 14, 8)
             };
             btn.Click += (_, _) => AppLaunchService.OpenUrl(capturedUrl);
@@ -166,8 +289,8 @@ public partial class DashboardView : UserControl
         var addBtn = new Button
         {
             Content = "+  Add App",
-            Style = (Style)FindResource("SecondaryButton"),
-            Margin = new Thickness(0, 0, 0, 8),
+            Style   = (Style)FindResource("SecondaryButton"),
+            Margin  = new Thickness(0, 0, 0, 8),
             Padding = new Thickness(14, 8, 14, 8)
         };
         QuickLaunchPanel.Children.Add(addBtn);
@@ -175,6 +298,8 @@ public partial class DashboardView : UserControl
 
     private void GoLive_Click(object sender, RoutedEventArgs e)
         => MainWindow.NavigateTo?.Invoke("live-control");
+
+    // ── Viewer chart ──────────────────────────────────────────────────────────
 
     private void ViewerChart_Loaded(object sender, RoutedEventArgs e) => DrawChart();
     private void ViewerChart_SizeChanged(object sender, SizeChangedEventArgs e) => DrawChart();
@@ -186,9 +311,15 @@ public partial class DashboardView : UserControl
         double h = ViewerChart.ActualHeight;
         if (w < 10 || h < 10) return;
 
-        int min = 260, max = 340;
-        double range = max - min;
-        int n = _viewerData.Length;
+        // Use live history when available, fall back to placeholder
+        int[] data = _liveViewerHistory.Count >= 2
+            ? _liveViewerHistory.ToArray()
+            : _placeholderData;
+
+        int min   = data.Min() - 10;
+        int max   = data.Max() + 10;
+        double range = Math.Max(1, max - min);
+        int n = data.Length;
 
         var fillPoints = new PointCollection();
         var linePoints = new PointCollection();
@@ -196,47 +327,68 @@ public partial class DashboardView : UserControl
         for (int i = 0; i < n; i++)
         {
             double x = i / (double)(n - 1) * w;
-            double y = h - ((_viewerData[i] - min) / range * (h - 10)) - 5;
+            double y = h - ((data[i] - min) / range * (h - 10)) - 5;
             linePoints.Add(new Point(x, y));
             fillPoints.Add(new Point(x, y));
         }
         fillPoints.Add(new Point(w, h));
         fillPoints.Add(new Point(0, h));
 
-        // Gradient fill
-        var fill = new Polygon
+        ViewerChart.Children.Add(new Polygon
         {
             Points = fillPoints,
-            Fill = new LinearGradientBrush(
+            Fill   = new LinearGradientBrush(
                 Color.FromArgb(70, 0x7C, 0x3A, 0xED),
-                Color.FromArgb(5, 0x7C, 0x3A, 0xED),
+                Color.FromArgb(5,  0x7C, 0x3A, 0xED),
                 new Point(0, 0), new Point(0, 1)),
             Stroke = Brushes.Transparent
-        };
+        });
 
-        // Line
-        var line = new Polyline
+        ViewerChart.Children.Add(new Polyline
         {
-            Points = linePoints,
-            Stroke = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
+            Points          = linePoints,
+            Stroke          = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
             StrokeThickness = 2,
-            StrokeLineJoin = PenLineJoin.Round
-        };
+            StrokeLineJoin  = PenLineJoin.Round
+        });
 
-        // Dot at last point
         var lastPt = linePoints[n - 1];
         var dot = new Ellipse
         {
             Width = 8, Height = 8,
-            Fill = new SolidColorBrush(Color.FromRgb(0xA7, 0x8B, 0xFA)),
+            Fill   = new SolidColorBrush(Color.FromRgb(0xA7, 0x8B, 0xFA)),
             Stroke = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)),
             StrokeThickness = 2
         };
         Canvas.SetLeft(dot, lastPt.X - 4);
-        Canvas.SetTop(dot, lastPt.Y - 4);
-
-        ViewerChart.Children.Add(fill);
-        ViewerChart.Children.Add(line);
+        Canvas.SetTop(dot,  lastPt.Y - 4);
         ViewerChart.Children.Add(dot);
+    }
+
+    // ── Toast helper ─────────────────────────────────────────────────────────
+
+    private static void ShowToast(string title, string body)
+    {
+        try
+        {
+            title = System.Security.SecurityElement.Escape(title);
+            body  = System.Security.SecurityElement.Escape(body);
+
+            var xml = new Windows.Data.Xml.Dom.XmlDocument();
+            xml.LoadXml($"""
+                <toast>
+                  <visual>
+                    <binding template="ToastGeneric">
+                      <text>{title}</text>
+                      <text>{body}</text>
+                    </binding>
+                  </visual>
+                </toast>
+                """);
+            var toast = new Windows.UI.Notifications.ToastNotification(xml);
+            Windows.UI.Notifications.ToastNotificationManager
+                .CreateToastNotifier().Show(toast);
+        }
+        catch { }
     }
 }

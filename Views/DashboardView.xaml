@@ -65,8 +65,10 @@
                 <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0">
                     <StackPanel>
                         <TextBlock Text="♥  FOLLOWERS" Style="{StaticResource Label}"/>
-                        <TextBlock Text="12,894" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="↑ +24 today" Foreground="{DynamicResource SuccessBrush}"
+                        <TextBlock x:Name="FollowerCountText" Text="—"
+                                   Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="FollowerSubText" Text="Connect Twitch to see count"
+                                   Foreground="{DynamicResource MutedText}"
                                    FontSize="12" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>

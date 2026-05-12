@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using StreamCommand.Models;
 
 namespace StreamCommand.Services;
@@ -14,7 +15,8 @@ namespace StreamCommand.Services;
 ///   2. Call <see cref="ReloadFromSettings"/> once at startup and again whenever the
 ///      user saves a rule change.
 ///   3. The engine listens to <see cref="TwitchChatService.Shared.MessageReceived"/>
-///      automatically — no further wiring needed.
+///      (for IRC events) and <see cref="EventSubService.Instance.FollowReceived"/>
+///      (for follows via EventSub) automatically — no further wiring needed.
 /// </summary>
 public sealed class AutomationEngine
 {
@@ -24,6 +26,7 @@ public sealed class AutomationEngine
     private AutomationEngine()
     {
         TwitchChatService.Shared.MessageReceived += OnMessage;
+        EventSubService.Instance.FollowReceived  += OnFollowReceived;
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -32,7 +35,7 @@ public sealed class AutomationEngine
 
     /// <summary>
     /// Reload the active rule set from persisted settings.
-    /// Call this after any rule change (toggle, add, delete).
+    /// Call this after any rule change (toggle, add, delete, edit).
     /// </summary>
     public void ReloadFromSettings()
     {
@@ -43,7 +46,7 @@ public sealed class AutomationEngine
         // (so a fresh install always has the defaults even if the JSON predates them)
         var saved     = s.AutomationRules;
         var savedIds  = new HashSet<string>(saved.Select(r => r.Id));
-        var defaults  = new AppSettings().AutomationRules;   // fresh defaults
+        var defaults  = new AppSettings().AutomationRules;
 
         foreach (var def in defaults)
             if (!savedIds.Contains(def.Id))
@@ -52,7 +55,7 @@ public sealed class AutomationEngine
         _rules = saved.Where(r => r.IsEnabled).ToList();
     }
 
-    // ── Core evaluation loop ──────────────────────────────────────────────────
+    // ── IRC event handler ─────────────────────────────────────────────────────
 
     private async void OnMessage(TwitchChatMessage msg)
     {
@@ -60,20 +63,50 @@ public sealed class AutomationEngine
 
         foreach (var rule in _rules)
         {
-            if (!Matches(rule, msg)) continue;
+            if (!MatchesIrc(rule, msg)) continue;
 
             var response = ExpandTemplate(rule.ResponseTemplate, msg);
             if (!string.IsNullOrWhiteSpace(response))
                 await TwitchChatService.Shared.SendMessageAsync(_channel, response);
 
-            // Only the first matching rule fires per event (prevents duplicate responses)
+            break;   // only the first matching rule fires per event
+        }
+    }
+
+    // ── EventSub follow handler ───────────────────────────────────────────────
+
+    private async void OnFollowReceived(string userName)
+    {
+        if (string.IsNullOrWhiteSpace(_channel)) return;
+
+        // Build a synthetic message so ExpandTemplate can use @user
+        var followMsg = new TwitchChatMessage
+        {
+            Username  = userName,
+            EventType = TwitchEventType.Follow,
+            Text      = $"🌟 {userName} just followed!",
+            IsAlert   = true,
+            Time      = DateTime.Now
+        };
+
+        // Raise a visible alert in the chat monitor / overlay
+        StreamEvents.RaiseAlert("🌟", followMsg.Text);
+
+        foreach (var rule in _rules)
+        {
+            if (rule.TriggerType != AutomationTrigger.NewFollower) continue;
+
+            var response = ExpandTemplate(rule.ResponseTemplate, followMsg);
+            if (!string.IsNullOrWhiteSpace(response))
+                await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+
             break;
         }
     }
 
-    // ── Trigger matching ──────────────────────────────────────────────────────
+    // ── Trigger matching (IRC events only) ───────────────────────────────────
 
-    private static bool Matches(AutomationRule rule, TwitchChatMessage msg)
+    private static bool MatchesIrc(AutomationRule rule, TwitchChatMessage msg)
     {
         return rule.TriggerType switch
         {
@@ -87,6 +120,7 @@ public sealed class AutomationEngine
                 !string.IsNullOrWhiteSpace(rule.CommandKeyword) &&
                 msg.Text.Trim().StartsWith(rule.CommandKeyword, StringComparison.OrdinalIgnoreCase),
 
+            // NewFollower is handled separately via EventSub — never match it through IRC
             _ => false
         };
     }
@@ -96,10 +130,10 @@ public sealed class AutomationEngine
     private static string ExpandTemplate(string template, TwitchChatMessage msg)
     {
         return template
-            .Replace("@user",   $"@{msg.Username}",   StringComparison.OrdinalIgnoreCase)
-            .Replace("@raider", $"@{(string.IsNullOrEmpty(msg.RaiderName) ? msg.Username : msg.RaiderName)}",
-                                StringComparison.OrdinalIgnoreCase)
-            .Replace("{months}", msg.Months,           StringComparison.OrdinalIgnoreCase)
-            .Replace("{viewers}", msg.ViewerCount,     StringComparison.OrdinalIgnoreCase);
+            .Replace("@user",    $"@{msg.Username}",   StringComparison.OrdinalIgnoreCase)
+            .Replace("@raider",  $"@{(string.IsNullOrEmpty(msg.RaiderName) ? msg.Username : msg.RaiderName)}",
+                                 StringComparison.OrdinalIgnoreCase)
+            .Replace("{months}",  msg.Months,           StringComparison.OrdinalIgnoreCase)
+            .Replace("{viewers}", msg.ViewerCount,      StringComparison.OrdinalIgnoreCase);
     }
 }

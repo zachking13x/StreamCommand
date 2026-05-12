@@ -28,21 +28,17 @@ public partial class AnalyticsView : UserControl
             ApplyProGate();
             await LoadLiveDataAsync();
             _refreshTimer.Start();
+
+            // Re-evaluate Pro gate when Store confirms entitlement
+            EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyProGate);
         };
     }
 
     private void ApplyProGate()
     {
-        bool isPro = EntitlementService.IsPro;
+        bool isPro = FeatureGate.Has("analytics-history");
         ProChartsGate.Visibility = isPro ? Visibility.Collapsed : Visibility.Visible;
         ChartsContent.Effect     = isPro ? null : new BlurEffect { Radius = 10, KernelType = KernelType.Gaussian };
-    }
-
-    private void UpgradeAnalytics_Click(object sender, RoutedEventArgs e)
-    {
-        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
-        win.ShowDialog();
-        ApplyProGate(); // re-check after dialog closes in case they upgraded
     }
 
     private async System.Threading.Tasks.Task LoadLiveDataAsync()

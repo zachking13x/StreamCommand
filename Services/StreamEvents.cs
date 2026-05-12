@@ -18,8 +18,12 @@ public static class StreamEvents
     /// <summary>Fired when the pre-stream checklist progress changes. (done, total)</summary>
     public static event Action<int, int>? ChecklistProgressChanged;
 
+    /// <summary>Fired whenever Planner events are saved — Dashboard subscribes to refresh its upcoming list.</summary>
+    public static event Action? PlannerChanged;
+
     public static void RaiseStreamState(bool isLive) => StreamStateChanged?.Invoke(isLive);
     public static void RaiseAlert(string emoji, string message) => AlertFired?.Invoke(emoji, message);
     public static void RaiseOBSState(bool isConnected) => OBSStateChanged?.Invoke(isConnected);
     public static void RaiseChecklistProgress(int done, int total) => ChecklistProgressChanged?.Invoke(done, total);
+    public static void RaisePlannerChanged() => PlannerChanged?.Invoke();
 }

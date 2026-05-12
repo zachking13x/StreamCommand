@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using StreamCommand.Services;
 
 namespace StreamCommand.Views;
@@ -24,24 +25,29 @@ public partial class MainWindow : Window
         "pro_lifetime"
     };
 
+    // Pre-stream reminder toast state
+    private readonly DispatcherTimer _reminderTimer;
+    private readonly HashSet<string> _notifiedEventKeys = new();
+
     public MainWindow()
     {
         InitializeComponent();
 
-        // ── T3: Validate cache before trusting it ──────────────────────────
-        // Only grant Pro from cache if the product ID is a known valid one.
-        // RefreshAsync() runs async below and will correct IsPro from the Store.
+        // ── T3: Validate cache before trusting it ──────────────────────────────
+        // Set IsProPending (not IsPro) from cache — IsPro is only set after Store confirms.
+        // This closes the exploit where any user could create a subscription.json and get Pro.
         var cached = LocalCache.LoadProState();
         if (cached != null && _validProductIds.Contains(cached))
         {
-            EntitlementService.IsPro          = true;
+            EntitlementService.IsProPending  = true;
             EntitlementService.ActiveProductId = cached;
+            // IsPro intentionally NOT set here — wait for RefreshAsync
         }
 
         // Refresh entitlements from Microsoft Store (async fire-and-forget)
         _ = EntitlementService.RefreshAsync();
 
-        // ── T5: Lazy view factories — created on first navigation ──────────
+        // ── T5: Lazy view factories — created on first navigation ──────────────
         _viewFactories = new Dictionary<string, Lazy<UserControl>>
         {
             ["dashboard"]    = new Lazy<UserControl>(() => new DashboardView()),
@@ -57,8 +63,29 @@ public partial class MainWindow : Window
             ["settings"]     = new Lazy<UserControl>(() => new SettingsView()),
         };
 
-        // ── T1: Start AutomationEngine with persisted rules ────────────────
+        // ── T1: Start AutomationEngine with persisted rules ────────────────────
         AutomationEngine.Instance.ReloadFromSettings();
+
+        // ── Phase 1: Start EventSub for follow events ──────────────────────────
+        Loaded += async (_, _) =>
+        {
+            var s = SettingsService.Load();
+            if (!string.IsNullOrWhiteSpace(s.TwitchUsername) &&
+                !string.IsNullOrWhiteSpace(s.TwitchClientId)  &&
+                !string.IsNullOrWhiteSpace(s.TwitchChatToken))
+            {
+                await EventSubService.Instance.ConnectAsync(
+                    s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
+            }
+
+            // Load persisted notification keys
+            var settings = SettingsService.Load();
+            foreach (var key in settings.NotifiedEventIds)
+                _notifiedEventKeys.Add(key);
+
+            // Check immediately then every 30 minutes
+            CheckPreStreamReminders();
+        };
 
         NavList.SelectedIndex = 0;
 
@@ -69,6 +96,11 @@ public partial class MainWindow : Window
                               .FirstOrDefault(i => i.Tag?.ToString() == tag);
             if (item != null) NavList.SelectedItem = item;
         };
+
+        // Pre-stream reminder timer — fires every 30 minutes
+        _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
+        _reminderTimer.Tick += (_, _) => CheckPreStreamReminders();
+        _reminderTimer.Start();
     }
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -94,5 +126,63 @@ public partial class MainWindow : Window
     {
         var win = new ProUpgradeWindow { Owner = this };
         win.ShowDialog();
+    }
+
+    // ── Pre-stream reminder toasts ────────────────────────────────────────────
+
+    private void CheckPreStreamReminders()
+    {
+        try
+        {
+            var s   = SettingsService.Load();
+            var now = DateTime.Now;
+            bool saved = false;
+
+            foreach (var ev in s.PlannerEvents)
+            {
+                if (ev.When <= now || ev.When > now.AddMinutes(60)) continue;
+
+                var key = $"{ev.Title}_{ev.When:yyyyMMddHHmm}";
+                if (_notifiedEventKeys.Contains(key)) continue;
+
+                _notifiedEventKeys.Add(key);
+                s.NotifiedEventIds.Add(key);
+                saved = true;
+
+                var minutesUntil = (int)(ev.When - now).TotalMinutes;
+                ShowToast(
+                    $"\U0001f4fa  {ev.Title} starting soon",
+                    $"Your stream starts in {minutesUntil} minutes — run your pre-stream checklist.");
+            }
+
+            if (saved) SettingsService.Save(s);
+        }
+        catch { /* Never crash the UI thread from timer */ }
+    }
+
+    private static void ShowToast(string title, string body)
+    {
+        try
+        {
+            // Sanitise inputs so they don't break the XML
+            title = System.Security.SecurityElement.Escape(title);
+            body  = System.Security.SecurityElement.Escape(body);
+
+            var xml = new Windows.Data.Xml.Dom.XmlDocument();
+            xml.LoadXml($"""
+                <toast>
+                  <visual>
+                    <binding template="ToastGeneric">
+                      <text>{title}</text>
+                      <text>{body}</text>
+                    </binding>
+                  </visual>
+                </toast>
+                """);
+            var toast = new Windows.UI.Notifications.ToastNotification(xml);
+            Windows.UI.Notifications.ToastNotificationManager
+                .CreateToastNotifier().Show(toast);
+        }
+        catch { /* Toast not available in all contexts (e.g. first run before identity is set) */ }
     }
 }

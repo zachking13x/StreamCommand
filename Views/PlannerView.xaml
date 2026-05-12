@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:StreamCommand.Models"
+             xmlns:local="clr-namespace:StreamCommand.Views"
              Background="{DynamicResource AppBackground}">
 
     <UserControl.Resources>
@@ -98,18 +99,10 @@
                 <TextBlock Text="Schedule and manage upcoming streams"
                            Style="{StaticResource Muted}" Margin="0,3,0,0"/>
                 <!-- Free tier limit notice (code-behind shows/hides) -->
-                <Border x:Name="PlannerFreeBanner" Visibility="Collapsed"
-                        Background="#1A0F3A" BorderBrush="{DynamicResource AccentBorder}"
-                        BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,8,0,0">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔒  Free plan: 3 scheduled streams max. "
-                                   Foreground="{DynamicResource AccentLight}" FontSize="12"/>
-                        <TextBlock Text="Upgrade to Pro for unlimited →"
-                                   Foreground="{DynamicResource AccentLight}" FontSize="12"
-                                   FontWeight="SemiBold" Cursor="Hand"
-                                   MouseLeftButtonUp="UpgradePlanner_Click"/>
-                    </StackPanel>
-                </Border>
+                <local:ProGateBanner x:Name="PlannerFreeBanner"
+                                     FeatureLabel="🔒  Free plan: 3 scheduled streams max — unlock unlimited with Pro"
+                                     Margin="0,8,0,0"
+                                     Visibility="Collapsed"/>
             </StackPanel>
             <Button Content="+ Schedule Stream"
                     Style="{StaticResource PrimaryButton}"
@@ -164,7 +157,16 @@
 
         <!-- Event List -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="EventList" ItemTemplate="{StaticResource EventTemplate}"/>
+            <StackPanel>
+                <!-- Empty state — visible when no upcoming streams are scheduled -->
+                <TextBlock x:Name="EmptyState"
+                           Text="No upcoming streams scheduled. Click '+ Schedule Stream' to add one."
+                           Foreground="{DynamicResource MutedText}"
+                           FontSize="13" TextWrapping="Wrap"
+                           Margin="0,8,0,0"
+                           Visibility="Collapsed"/>
+                <ItemsControl x:Name="EventList" ItemTemplate="{StaticResource EventTemplate}"/>
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>

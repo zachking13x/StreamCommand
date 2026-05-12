@@ -16,18 +16,24 @@ public class AutomationCategory
 
 public partial class AutomationView : UserControl
 {
-    private const int FreeRuleLimit = 3;
-
     // The live list — bound to the UI, persisted on every change
     private ObservableCollection<AutomationRule> _rules = new();
 
     // Guard against re-entrant saves when we programmatically revert a toggle
     private bool _suspendSave;
 
+    // When non-null, SaveNewRule_Click updates this rule in place instead of adding
+    private AutomationRule? _editingRule;
+
     public AutomationView()
     {
         InitializeComponent();
-        Loaded += (_, _) => LoadRules();
+        Loaded += (_, _) =>
+        {
+            LoadRules();
+            // Re-evaluate Pro gate whenever entitlement is confirmed
+            EntitlementService.Refreshed += () => Dispatcher.Invoke(RefreshView);
+        };
     }
 
     // ── Load / Save ───────────────────────────────────────────────────────────
@@ -67,7 +73,7 @@ public partial class AutomationView : UserControl
 
     private void RefreshView()
     {
-        bool isPro = EntitlementService.IsPro;
+        bool isPro = FeatureGate.Has("automation-unlimited");
         FreeLimitBanner.Visibility = !isPro ? Visibility.Visible : Visibility.Collapsed;
 
         var categories = _rules
@@ -88,14 +94,14 @@ public partial class AutomationView : UserControl
     {
         if (_suspendSave) return;
 
-        // Free tier: block enabling a rule beyond the limit
-        if (rule.IsEnabled && !EntitlementService.IsPro)
+        // Free tier: cap active rules at 3
+        if (rule.IsEnabled && !FeatureGate.Has("automation-unlimited"))
         {
             int enabledCount = _rules.Count(r => r.IsEnabled);
-            if (enabledCount > FreeRuleLimit)
+            if (enabledCount > 3)
             {
                 _suspendSave = true;
-                rule.IsEnabled = false;   // revert
+                rule.IsEnabled = false;
                 _suspendSave = false;
 
                 var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
@@ -111,22 +117,27 @@ public partial class AutomationView : UserControl
 
     private void NewRule_Click(object sender, RoutedEventArgs e)
     {
-        if (!EntitlementService.IsPro && _rules.Count(r => r.IsEnabled) >= FreeRuleLimit)
+        if (!FeatureGate.Has("automation-unlimited") && _rules.Count(r => r.IsEnabled) >= 3)
         {
             var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
             win.ShowDialog();
             return;
         }
 
-        NewRuleForm.Visibility   = Visibility.Visible;
+        _editingRule = null;
+        RuleFormTitle.Text             = "New Rule";
         TriggerTypeCombo.SelectedIndex = 0;
         CommandKeywordPanel.Visibility = Visibility.Collapsed;
-        ResponseInput.Text       = "";
-        CommandKeywordInput.Text = "";
+        ResponseInput.Text             = "";
+        CommandKeywordInput.Text       = "";
+        NewRuleForm.Visibility         = Visibility.Visible;
     }
 
     private void CancelNewRule_Click(object sender, RoutedEventArgs e)
-        => NewRuleForm.Visibility = Visibility.Collapsed;
+    {
+        _editingRule           = null;
+        NewRuleForm.Visibility = Visibility.Collapsed;
+    }
 
     private void TriggerTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -149,10 +160,10 @@ public partial class AutomationView : UserControl
             "Resub"         => AutomationTrigger.Resub,
             "GiftSub"       => AutomationTrigger.GiftSub,
             "Raid"          => AutomationTrigger.Raid,
+            "NewFollower"   => AutomationTrigger.NewFollower,
             _               => AutomationTrigger.ChatCommand
         };
 
-        // For chat commands, require a keyword
         var keyword = CommandKeywordInput.Text.Trim();
         if (triggerType == AutomationTrigger.ChatCommand)
         {
@@ -162,37 +173,85 @@ public partial class AutomationView : UserControl
 
         var (displayTrigger, displayAction, category) = triggerType switch
         {
-            AutomationTrigger.NewSubscriber => ("New subscriber",             "Send thank-you message",    "Subscribers"),
-            AutomationTrigger.Resub         => ("Re-subscription",            "Send welcome-back message", "Subscribers"),
-            AutomationTrigger.GiftSub       => ("Gift sub",                   "Thank the gifter",          "Subscribers"),
-            AutomationTrigger.Raid          => ("Raid received",              "Welcome raiders",           "Raids"),
-            _                               => ($"{keyword} in chat",         "Post response",             "Commands")
+            AutomationTrigger.NewSubscriber => ("New subscriber",  "Send thank-you message",    "Subscribers"),
+            AutomationTrigger.Resub         => ("Re-subscription", "Send welcome-back message", "Subscribers"),
+            AutomationTrigger.GiftSub       => ("Gift sub",        "Thank the gifter",          "Subscribers"),
+            AutomationTrigger.Raid          => ("Raid received",   "Welcome raiders",           "Raids"),
+            AutomationTrigger.NewFollower   => ("New follower",    "Send welcome message",      "Followers"),
+            _                               => ($"{keyword} in chat", "Post response",          "Commands")
         };
 
-        var rule = new AutomationRule
+        if (_editingRule != null)
         {
-            Category         = category,
-            TriggerType      = triggerType,
-            CommandKeyword   = keyword,
-            Trigger          = displayTrigger,
-            Action           = displayAction,
-            ResponseTemplate = response,
-            IsEnabled        = true
-        };
-
-        _rules.Add(rule);
-        rule.PropertyChanged += (_, _) => OnRuleToggled(rule);
+            // Update in place — preserves the rule's Id and IsEnabled state
+            _editingRule.TriggerType      = triggerType;
+            _editingRule.CommandKeyword   = keyword;
+            _editingRule.ResponseTemplate = response;
+            _editingRule.Trigger          = displayTrigger;
+            _editingRule.Action           = displayAction;
+            _editingRule.Category         = category;
+            _editingRule = null;
+        }
+        else
+        {
+            var rule = new AutomationRule
+            {
+                Category         = category,
+                TriggerType      = triggerType,
+                CommandKeyword   = keyword,
+                Trigger          = displayTrigger,
+                Action           = displayAction,
+                ResponseTemplate = response,
+                IsEnabled        = true
+            };
+            _rules.Add(rule);
+            rule.PropertyChanged += (_, _) => OnRuleToggled(rule);
+        }
 
         NewRuleForm.Visibility = Visibility.Collapsed;
         SaveRules();
         RefreshView();
     }
 
+    // ── Edit / Delete ─────────────────────────────────────────────────────────
+
+    private void EditRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: AutomationRule rule }) return;
+
+        _editingRule   = rule;
+        RuleFormTitle.Text = "Edit Rule";
+
+        // Select the matching trigger type in the combo
+        var tagStr = rule.TriggerType switch
+        {
+            AutomationTrigger.NewSubscriber => "NewSubscriber",
+            AutomationTrigger.Resub         => "Resub",
+            AutomationTrigger.GiftSub       => "GiftSub",
+            AutomationTrigger.Raid          => "Raid",
+            AutomationTrigger.NewFollower   => "NewFollower",
+            _                               => "ChatCommand"
+        };
+        foreach (ComboBoxItem cbi in TriggerTypeCombo.Items)
+            if (cbi.Tag?.ToString() == tagStr) { TriggerTypeCombo.SelectedItem = cbi; break; }
+
+        CommandKeywordInput.Text = rule.CommandKeyword;
+        ResponseInput.Text       = rule.ResponseTemplate;
+        CommandKeywordPanel.Visibility =
+            rule.TriggerType == AutomationTrigger.ChatCommand ? Visibility.Visible : Visibility.Collapsed;
+
+        NewRuleForm.Visibility = Visibility.Visible;
+    }
+
+    private void DeleteRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: AutomationRule rule }) return;
+        _rules.Remove(rule);
+        SaveRules();
+        RefreshView();
+    }
+
     // ── Upgrade banner ────────────────────────────────────────────────────────
 
-    private void UpgradeBanner_Click(object sender, MouseButtonEventArgs e)
-    {
-        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
-        win.ShowDialog();
-    }
+    // ProGateBanner handles upgrade clicks internally — no handler needed here
 }

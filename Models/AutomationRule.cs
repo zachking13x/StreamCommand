@@ -9,6 +9,7 @@ public enum AutomationTrigger
     GiftSub,        // USERNOTICE msg-id=subgift / submysterygift
     Raid,           // USERNOTICE msg-id=raid
     ChatCommand,    // PRIVMSG starting with a specific !keyword
+    NewFollower,    // EventSub channel.follow (v2) — requires moderator:read:followers scope
 }
 
 public class AutomationRule : INotifyPropertyChanged

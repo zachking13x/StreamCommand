@@ -5,13 +5,11 @@ using System.Windows;
 using System.Windows.Controls;
 using StreamCommand.Models;
 using StreamCommand.Services;
-using StreamCommand.Views;
 
 namespace StreamCommand.Views;
 
 public partial class PlannerView : UserControl
 {
-    private const int FreePlannerLimit = 3;
     private readonly ObservableCollection<StreamEvent> _events = new();
 
     public PlannerView()
@@ -20,20 +18,22 @@ public partial class PlannerView : UserControl
         EventList.ItemsSource = _events;
         LoadEvents();
         RefreshFreeBanner();
+
+        // Re-evaluate Pro gate after entitlement is confirmed by the Store
+        EntitlementService.Refreshed += () => Dispatcher.Invoke(RefreshFreeBanner);
     }
 
     private void RefreshFreeBanner()
     {
-        PlannerFreeBanner.Visibility = (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        bool atLimit = !FeatureGate.Has("planner-unlimited") && _events.Count >= 3;
+        PlannerFreeBanner.Visibility = atLimit ? Visibility.Visible : Visibility.Collapsed;
+        UpdateEmptyState();
     }
 
-    private void UpgradePlanner_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void UpdateEmptyState()
     {
-        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
-        win.ShowDialog();
-        RefreshFreeBanner();
+        bool hasUpcoming = _events.Any(e => !e.IsPast);
+        EmptyState.Visibility = hasUpcoming ? Visibility.Collapsed : Visibility.Visible;
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ public partial class PlannerView : UserControl
 
         if (s.PlannerEvents.Count == 0)
         {
-            // Seed with future-relative example data so the view is never empty and dates stay valid
+            // Seed with future-relative example data so the view is never empty on first run
             var today = DateTime.Today;
             _events.Add(new StreamEvent { Title = "Ranked Grind — Road to Diamond",   Platform = "Twitch",  StreamDateTime = today.AddDays(2).AddHours(19), Duration = "3h", Notes = "Focus on support play" });
             _events.Add(new StreamEvent { Title = "Friday Night Warzone with Subs",   Platform = "Twitch",  StreamDateTime = today.AddDays(4).AddHours(20), Duration = "4h", Notes = "Sub games night" });
@@ -64,6 +64,9 @@ public partial class PlannerView : UserControl
                     Notes          = ev.Notes
                 });
         }
+
+        SortEvents();
+        UpdateEmptyState();
     }
 
     private void SaveEvents()
@@ -78,13 +81,32 @@ public partial class PlannerView : UserControl
             Notes    = e.Notes
         }).ToList();
         SettingsService.Save(s);
+
+        // Notify Dashboard so its upcoming list stays in sync
+        StreamEvents.RaisePlannerChanged();
+    }
+
+    /// <summary>
+    /// Sorts _events in place: upcoming (ascending by date) first, past (descending) at the bottom.
+    /// </summary>
+    private void SortEvents()
+    {
+        var sorted = _events
+            .OrderBy(e => e.IsPast)                          // upcoming (false) before past (true)
+            .ThenBy(e => e.IsPast  ? DateTime.MinValue : e.StreamDateTime)   // upcoming: ascending
+            .ThenByDescending(e => !e.IsPast ? DateTime.MinValue : e.StreamDateTime)  // past: descending
+            .ToList();
+
+        _events.Clear();
+        foreach (var ev in sorted)
+            _events.Add(ev);
     }
 
     // ── Add / Cancel / Save ──────────────────────────────────────────────────
 
     private void AddStream_Click(object sender, RoutedEventArgs e)
     {
-        if (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
+        if (!FeatureGate.Has("planner-unlimited") && _events.Count >= 3)
         {
             var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
             win.ShowDialog();
@@ -100,7 +122,7 @@ public partial class PlannerView : UserControl
     {
         if (string.IsNullOrWhiteSpace(TitleInput.Text)) return;
 
-        if (!EntitlementService.IsPro && _events.Count >= FreePlannerLimit)
+        if (!FeatureGate.Has("planner-unlimited") && _events.Count >= 3)
         {
             AddForm.Visibility = Visibility.Collapsed;
             var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
@@ -123,12 +145,13 @@ public partial class PlannerView : UserControl
             Notes          = NotesInput.Text
         });
 
-        SaveEvents();   // persist immediately
+        SortEvents();
+        SaveEvents();
         RefreshFreeBanner();
 
-        TitleInput.Text  = "";
-        TimeInput.Text   = "";
-        NotesInput.Text  = "";
+        TitleInput.Text    = "";
+        TimeInput.Text     = "";
+        NotesInput.Text    = "";
         AddForm.Visibility = Visibility.Collapsed;
     }
 
@@ -137,7 +160,7 @@ public partial class PlannerView : UserControl
         if (sender is Button { Tag: StreamEvent ev })
         {
             _events.Remove(ev);
-            SaveEvents();   // persist immediately
+            SaveEvents();
             RefreshFreeBanner();
         }
     }

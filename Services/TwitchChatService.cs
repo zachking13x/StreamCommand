@@ -13,6 +13,7 @@ public enum TwitchEventType
     Resub,
     GiftSub,
     Raid,
+    Follow,   // EventSub channel.follow — does NOT come through IRC
 }
 
 public class TwitchChatMessage

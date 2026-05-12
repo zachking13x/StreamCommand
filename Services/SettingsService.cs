@@ -68,6 +68,17 @@ public class AppSettings
                 IsEnabled=true },
     };
 
+    /// <summary>
+    /// Keys of PlannerEvents that have already triggered a pre-stream reminder toast.
+    /// Key = "{Title}_{When:yyyyMMddHHmm}". Prevents double-notifying across app restarts.
+    /// </summary>
+    public List<string> NotifiedEventIds   { get; set; } = new();
+
+    /// <summary>
+    /// Milestone labels (e.g. "1000", "5000") that have already been celebrated with a toast.
+    /// </summary>
+    public List<string> CelebratedMilestones { get; set; } = new();
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },

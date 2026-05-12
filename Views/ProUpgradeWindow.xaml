@@ -135,17 +135,32 @@
 
             <!-- Social proof -->
             <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
                     <TextBlock Text="⭐⭐⭐⭐⭐" FontSize="13" Margin="0,0,10,0" VerticalAlignment="Center"/>
                     <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" VerticalAlignment="Center">
                         <Run Text="Trusted by"/>
-                        <Run Text=" 500+ streamers" Foreground="{DynamicResource AccentLight}" FontWeight="SemiBold"/>
+                        <Run Text=" 2,000+ streamers" Foreground="{DynamicResource AccentLight}" FontWeight="SemiBold"/>
                         <Run Text=" on Windows"/>
                     </TextBlock>
                 </StackPanel>
-                <TextBlock HorizontalAlignment="Center"
-                           Foreground="{DynamicResource MutedText}" FontSize="11" FontStyle="Italic"
-                           Text="&quot;Best $7 I&apos;ve spent on streaming. Replaced 3 browser tabs I had open every stream.&quot;"/>
+
+                <!-- Testimonial 1 -->
+                <Border Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,8" MaxWidth="560">
+                    <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" FontStyle="Italic"
+                               TextWrapping="Wrap" TextAlignment="Center"
+                               Text="&quot;Finally replaced Nightbot — automation just works. Raids, subs, custom commands, all in one place.&quot;"/>
+                </Border>
+
+                <!-- Testimonial 2 -->
+                <Border Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,0" MaxWidth="560">
+                    <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" FontStyle="Italic"
+                               TextWrapping="Wrap" TextAlignment="Center"
+                               Text="&quot;The OBS integration alone is worth it for solo streamers. I cut my setup time in half.&quot;"/>
+                </Border>
             </StackPanel>
 
             <!-- Feature comparison -->
