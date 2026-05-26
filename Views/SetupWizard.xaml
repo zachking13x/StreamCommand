@@ -53,19 +53,16 @@
 
             <!-- STEP 1 — Welcome -->
             <StackPanel x:Name="Step1" Visibility="Visible" VerticalAlignment="Center">
-                <Border Width="56" Height="56" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,20">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#7C3AED" Offset="0"/>
-                            <GradientStop Color="#5B21B6" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Width="56" Height="56" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,20"
+                        Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="▶" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
                 <TextBlock Text="Welcome to Stream Command" TextAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="22" FontWeight="Bold" Margin="0,0,0,8"/>
-                <TextBlock TextAlignment="Center" Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,26"
-                           Text="Your all-in-one streaming companion. Let's get you set up — it only takes about 2 minutes."/>
+                <TextBlock TextAlignment="Center" Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"
+                           Text="Your all-in-one streaming companion — chat alerts, OBS control, and analytics in one place."/>
+                <TextBlock TextAlignment="Center" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,22"
+                           Text="Takes about 2 minutes to set up. You can skip any step and come back later in Settings."/>
 
                 <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16,14">
                     <StackPanel>

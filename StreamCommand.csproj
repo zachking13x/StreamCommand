@@ -11,9 +11,9 @@
     <RootNamespace>StreamCommand</RootNamespace>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <!-- Version — bump these for every Store submission -->
-    <Version>1.0.7</Version>
-    <AssemblyVersion>1.0.7.0</AssemblyVersion>
-    <FileVersion>1.0.7.0</FileVersion>
+    <Version>1.0.10</Version>
+    <AssemblyVersion>1.0.10.0</AssemblyVersion>
+    <FileVersion>1.0.10.0</FileVersion>
     <Company>Zach Kramer</Company>
     <Authors>Zach Kramer</Authors>
     <Product>Stream Command</Product>

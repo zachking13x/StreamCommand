@@ -163,7 +163,7 @@ public partial class DashboardView : UserControl
     {
         double pct = total > 0 ? done * 100.0 / total : 0;
         ChecklistProgressBar.Value = pct;
-        ChecklistBadgeText.Text    = $"{done} / {total}";
+        ChecklistBadgeText.Text    = total > 0 ? $"{done} / {total}" : "—";   // MATH 3: no "0 / 0"
 
         if (done == 0)
             ChecklistSubText.Text = "Open checklist to start your pre-stream setup";
@@ -294,6 +294,7 @@ public partial class DashboardView : UserControl
             Margin  = new Thickness(0, 0, 0, 8),
             Padding = new Thickness(14, 8, 14, 8)
         };
+        addBtn.Click += (_, _) => MainWindow.NavigateTo?.Invoke("quick-launch");   // BUG 1: was dead
         QuickLaunchPanel.Children.Add(addBtn);
     }
 
@@ -317,7 +318,7 @@ public partial class DashboardView : UserControl
             ? _liveViewerHistory.ToArray()
             : _placeholderData;
 
-        int min   = data.Min() - 10;
+        int min   = Math.Max(0, data.Min() - 10);   // MATH 2: clamp to 0 — small channels never go negative
         int max   = data.Max() + 10;
         double range = Math.Max(1, max - min);
         int n = data.Length;

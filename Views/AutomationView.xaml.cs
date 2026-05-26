@@ -76,6 +76,15 @@ public partial class AutomationView : UserControl
         bool isPro = FeatureGate.Has("automation-unlimited");
         FreeLimitBanner.Visibility = !isPro ? Visibility.Visible : Visibility.Collapsed;
 
+        // UX 3: show live count so users see the wall approaching before they hit it
+        if (!isPro)
+        {
+            int used = _rules.Count(r => r.IsEnabled);
+            FreeLimitBanner.FeatureLabel = used >= 3
+                ? $"🔒  Free plan: {used}/3 rules active — upgrade Pro for unlimited"
+                : $"🔒  Free plan: {used}/3 active rules — upgrade Pro for unlimited";
+        }
+
         var categories = _rules
             .GroupBy(r => r.Category)
             .Select(g => new AutomationCategory
@@ -94,11 +103,13 @@ public partial class AutomationView : UserControl
     {
         if (_suspendSave) return;
 
-        // Free tier: cap active rules at 3
+        // Free tier: cap active rules at 3 — BUG 3 fix: count OTHERS to avoid off-by-one
         if (rule.IsEnabled && !FeatureGate.Has("automation-unlimited"))
         {
-            int enabledCount = _rules.Count(r => r.IsEnabled);
-            if (enabledCount > 3)
+            // Count enabled rules excluding this one — if already 3 others are enabled,
+            // enabling this one would bring the total to 4 (over limit). Revert it.
+            int otherEnabled = _rules.Count(r => r.IsEnabled && r != rule);
+            if (otherEnabled >= 3)
             {
                 _suspendSave = true;
                 rule.IsEnabled = false;

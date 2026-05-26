@@ -128,11 +128,12 @@ public partial class SetupWizard : Window
             s.TwitchClientId     = _twitchAuth.ClientId;
         }
 
-        // OBS (step 3)
+        // OBS (step 3) — SECURITY 1: validate port range before accepting
         if (OBSPasswordBox.Password.Length > 0)
             s.OBSWebSocketPassword = OBSPasswordBox.Password;
-        if (int.TryParse(OBSPortBox.Text, out var port))
+        if (int.TryParse(OBSPortBox.Text, out var port) && port >= 1024 && port <= 65535)
             s.OBSWebSocketPort = port;
+        // else: silently keep the default 4455 — invalid ports are rejected
 
         // YouTube (step 4)
         if (!string.IsNullOrWhiteSpace(YoutubeChannelBox.Text))
@@ -210,7 +211,7 @@ public partial class SetupWizard : Window
     private async void ConnectTwitch_Click(object sender, RoutedEventArgs e)
     {
         ConnectTwitchBtn.IsEnabled = false;
-        ConnectTwitchBtn.Content   = "Opening Twitch…";
+        ConnectTwitchBtn.Content   = "Waiting for Twitch…";
 
         try
         {
@@ -224,23 +225,25 @@ public partial class SetupWizard : Window
                 var s = SettingsService.Load();
                 s.TwitchUsername     = result.Username;
                 s.TwitchChatToken    = result.AccessToken;
-                s.TwitchRefreshToken = result.RefreshToken;   // PKCE refresh token
+                s.TwitchRefreshToken = result.RefreshToken;
                 s.TwitchClientId     = result.ClientId;
                 SettingsService.Save(s);
 
-                // Show connected banner
-                TwitchConnectedText.Text       = $"Connected as @{result.Username}";
+                TwitchConnectedText.Text         = $"Connected as @{result.Username}";
                 TwitchConnectedBanner.Visibility = Visibility.Visible;
-                ConnectTwitchBtn.Content        = "✓  Reconnect Twitch";
+                ConnectTwitchBtn.Content         = "✓  Reconnect Twitch";
             }
             else
             {
-                ConnectTwitchBtn.Content = "Connection failed — try again";
+                var failure = TwitchOAuthService.LastFailure;
+                ConnectTwitchBtn.Content = failure != null
+                    ? $"Failed ({failure.Step}) — try again"
+                    : "Connection failed — try again";
             }
         }
-        catch
+        catch (Exception ex)
         {
-            ConnectTwitchBtn.Content = "Connection failed — try again";
+            ConnectTwitchBtn.Content = $"Error: {ex.Message[..Math.Min(60, ex.Message.Length)]}";
         }
         finally
         {

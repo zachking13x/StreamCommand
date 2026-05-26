@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using StreamCommand.Models;
+using StreamCommand.Services;
 
 namespace StreamCommand.Views;
 
@@ -28,11 +29,21 @@ public partial class GrowthView : UserControl
     {
         InitializeComponent();
 
-        _goals.Add(new GrowthGoal { Label = "Followers",              Category = "Audience",    Current = 12894, Target = 15000, Unit = "followers" });
-        _goals.Add(new GrowthGoal { Label = "Avg Concurrent Viewers", Category = "Audience",    Current = 302,   Target = 500,   Unit = "viewers"   });
-        _goals.Add(new GrowthGoal { Label = "Subscribers",            Category = "Revenue",     Current = 48,    Target = 100,   Unit = "subs"      });
-        _goals.Add(new GrowthGoal { Label = "Monthly Streams",        Category = "Consistency", Current = 2,     Target = 12,    Unit = "streams"   });
-        _goals.Add(new GrowthGoal { Label = "Hours Streamed (Month)", Category = "Consistency", Current = 18,    Target = 40,    Unit = "hours"     });
+        // Seed default goals on first run
+        var s = SettingsService.Load();
+        if (s.GrowthGoals.Count == 0)
+        {
+            s.GrowthGoals.Add(new GrowthGoal { Label = "Followers",              Category = "Audience",    Current = 0,  Target = 1000, Unit = "followers" });
+            s.GrowthGoals.Add(new GrowthGoal { Label = "Avg Concurrent Viewers", Category = "Audience",    Current = 0,  Target = 50,   Unit = "viewers"   });
+            s.GrowthGoals.Add(new GrowthGoal { Label = "Subscribers",            Category = "Revenue",     Current = 0,  Target = 100,  Unit = "subs"      });
+            s.GrowthGoals.Add(new GrowthGoal { Label = "Monthly Streams",        Category = "Consistency", Current = 0,  Target = 12,   Unit = "streams"   });
+            s.GrowthGoals.Add(new GrowthGoal { Label = "Hours Streamed (Month)", Category = "Consistency", Current = 0,  Target = 40,   Unit = "hours"     });
+            SettingsService.Save(s);
+        }
+
+        // BUG 4: load persisted goals
+        foreach (var g in s.GrowthGoals)
+            _goals.Add(g);
 
         GoalList.ItemsSource = _goals;
         BuildMilestones();
@@ -57,14 +68,20 @@ public partial class GrowthView : UserControl
         double.TryParse(GoalTargetInput.Text, out var target);
         var category = (GoalCategoryInput.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Audience";
 
-        _goals.Add(new GrowthGoal
+        var newGoal = new GrowthGoal
         {
             Label    = GoalLabelInput.Text.Trim(),
             Category = category,
             Current  = current,
             Target   = target > 0 ? target : 100,
             Unit     = string.IsNullOrWhiteSpace(GoalUnitInput.Text) ? "units" : GoalUnitInput.Text.Trim()
-        });
+        };
+        _goals.Add(newGoal);
+
+        // BUG 4: persist goal so it survives restarts
+        var s = SettingsService.Load();
+        s.GrowthGoals.Add(newGoal);
+        SettingsService.Save(s);
 
         AddGoalForm.Visibility = Visibility.Collapsed;
         ClearGoalForm();

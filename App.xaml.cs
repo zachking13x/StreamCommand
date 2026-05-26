@@ -17,6 +17,9 @@ public partial class App : Application
 
         var settings = SettingsService.Load();
 
+        // Apply saved accent colour before any window renders
+        ThemeService.Apply(settings.AccentColor);
+
         if (!settings.SetupComplete)
         {
             var wizard = new Views.SetupWizard();

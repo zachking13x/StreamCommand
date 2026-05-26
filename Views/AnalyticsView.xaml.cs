@@ -6,6 +6,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using StreamCommand.Services;
+using TC = StreamCommand.Services.ThemeColors;
 
 namespace StreamCommand.Views;
 
@@ -32,6 +33,9 @@ public partial class AnalyticsView : UserControl
             // Re-evaluate Pro gate when Store confirms entitlement
             EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyProGate);
         };
+
+        // P4: stop the refresh timer when the view is not visible — prevents unnecessary API calls
+        Unloaded += (_, _) => _refreshTimer.Stop();
     }
 
     private void ApplyProGate()
@@ -130,16 +134,18 @@ public partial class AnalyticsView : UserControl
         FollowerChart.Children.Add(new Polygon
         {
             Points = fill,
-            Fill = new LinearGradientBrush(Color.FromArgb(70, 0x7C, 0x3A, 0xED),
-                                           Color.FromArgb(5,  0x7C, 0x3A, 0xED),
-                                           new Point(0,0), new Point(0,1)),
+            Fill   = new LinearGradientBrush(
+                Color.FromArgb(0x18, TC.Accent.R, TC.Accent.G, TC.Accent.B),
+                Color.FromArgb(0x04, TC.Accent.R, TC.Accent.G, TC.Accent.B),
+                new Point(0,0), new Point(0,1)),
             Stroke = Brushes.Transparent
         });
         FollowerChart.Children.Add(new Polyline
         {
-            Points = pts,
-            Stroke = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
-            StrokeThickness = 2, StrokeLineJoin = PenLineJoin.Round
+            Points          = pts,
+            Stroke          = new SolidColorBrush(TC.Accent),
+            StrokeThickness = 1.5,
+            StrokeLineJoin  = PenLineJoin.Round
         });
     }
 
@@ -155,14 +161,15 @@ public partial class AnalyticsView : UserControl
 
         int n = _avgViewers.Length;
         double groupW = w / n;
-        double barW   = groupW * 0.30;
+        // MATH 1: reduced barW to 0.25 and adjusted offsets so bars don't overlap at narrow widths
+        double barW   = groupW * 0.25;
         double maxVal = 450;
 
         for (int i = 0; i < n; i++)
         {
             double groupX = i * groupW;
-            DrawBar(ViewerBarChart, groupX + groupW * 0.10, barW, h, _avgViewers[i],  maxVal, Color.FromRgb(0x7C,0x3A,0xED));
-            DrawBar(ViewerBarChart, groupX + groupW * 0.48, barW, h, _peakViewers[i], maxVal, Color.FromRgb(0x4C,0x1D,0x95));
+            DrawBar(ViewerBarChart, groupX + groupW * 0.12, barW, h, _avgViewers[i],  maxVal, TC.Accent);
+            DrawBar(ViewerBarChart, groupX + groupW * 0.52, barW, h, _peakViewers[i], maxVal, TC.AccentLight);
 
             ViewerBarChart.Children.Add(new TextBlock
             {
@@ -193,7 +200,7 @@ public partial class AnalyticsView : UserControl
         for (int i = 0; i < n; i++)
         {
             double groupX = i * groupW;
-            DrawBar(HoursBarChart, groupX + groupW * 0.25, barW, h, _hours[i], 6, Color.FromRgb(0xA7,0x8B,0xFA));
+            DrawBar(HoursBarChart, groupX + groupW * 0.25, barW, h, _hours[i], 6, TC.AccentLight);
 
             HoursBarChart.Children.Add(new TextBlock
             {
@@ -207,7 +214,7 @@ public partial class AnalyticsView : UserControl
         }
     }
 
-    private static void DrawBar(Canvas canvas, double x, double bw, double ch, double value, double max, Color color)
+    private static void DrawBar(Canvas canvas, double x, double bw, double ch, double value, double max, System.Windows.Media.Color color)
     {
         double barH = value / max * (ch - 20);
         double top  = ch - barH - 16;

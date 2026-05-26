@@ -152,7 +152,12 @@
                                     Grid.Column="2"
                                     Content="📷  Cam On"
                                     Style="{StaticResource SecondaryButton}"
-                                    Click="CamButton_Click"/>
+                                    Click="CamButton_Click">
+                                <!-- BUG 6: this is a visual reminder only — cam must be toggled in OBS -->
+                                <Button.ToolTip>
+                                    <ToolTip Content="Reminder only — camera source must be toggled in OBS"/>
+                                </Button.ToolTip>
+                            </Button>
                         </Grid>
                     </StackPanel>
                 </Border>

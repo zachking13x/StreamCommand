@@ -194,6 +194,62 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Device code panel — shown while waiting for user to approve in browser -->
+                    <Border x:Name="DeviceCodePanel"
+                            Visibility="Collapsed"
+                            Background="{DynamicResource AccentMuted}"
+                            BorderBrush="{DynamicResource AccentBorder}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,14"
+                            Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="A browser window just opened — enter this code at twitch.tv/activate:"
+                                       Foreground="{DynamicResource AccentLight}"
+                                       FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                            <!-- The user code — big, easy to read -->
+                            <Border Background="{DynamicResource CardBackground}"
+                                    CornerRadius="8" Padding="14,10" Margin="0,0,0,10"
+                                    HorizontalAlignment="Left">
+                                <TextBlock x:Name="DeviceCodeLabel"
+                                           FontSize="26" FontWeight="Bold" FontFamily="Consolas"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           LetterSpacing="4"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="⏳  Waiting for you to approve…"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button x:Name="CancelTwitchBtn"
+                                    Content="Cancel"
+                                    Style="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Left"
+                                    Padding="12,6" FontSize="12"
+                                    Click="CancelTwitch_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Error detail — shown when auth fails -->
+                    <Border x:Name="TwitchErrorBanner"
+                            Visibility="Collapsed"
+                            Background="#2D0A0A"
+                            BorderBrush="{DynamicResource DangerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="TwitchErrorStep"
+                                       Foreground="#FCA5A5"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Margin="0,0,0,3"/>
+                            <TextBlock x:Name="TwitchErrorDetail"
+                                       Foreground="{DynamicResource MutedText}"
+                                       FontSize="11" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                Text="Your access token is saved only on this PC and never transmitted to any server."/>
                 </StackPanel>
@@ -204,20 +260,25 @@
                 <StackPanel>
                     <TextBlock Text="Appearance" Style="{StaticResource SectionHeader}" Margin="0,0,0,14"/>
                     <TextBlock Text="ACCENT COLOR" Style="{StaticResource Label}" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand" BorderBrush="White" BorderThickness="2">
+                    <StackPanel x:Name="SwatchPanel" Orientation="Horizontal">
+                        <Border x:Name="Swatch1" Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand"
+                                Tag="#6B9E85" MouseLeftButtonUp="ColorSwatch_Click">
                             <Border.Background><SolidColorBrush Color="#6B9E85"/></Border.Background>
                         </Border>
-                        <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand">
+                        <Border x:Name="Swatch2" Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand"
+                                Tag="#2563EB" MouseLeftButtonUp="ColorSwatch_Click">
                             <Border.Background><SolidColorBrush Color="#2563EB"/></Border.Background>
                         </Border>
-                        <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand">
+                        <Border x:Name="Swatch3" Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand"
+                                Tag="#DB2777" MouseLeftButtonUp="ColorSwatch_Click">
                             <Border.Background><SolidColorBrush Color="#DB2777"/></Border.Background>
                         </Border>
-                        <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand">
+                        <Border x:Name="Swatch4" Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand"
+                                Tag="#16A34A" MouseLeftButtonUp="ColorSwatch_Click">
                             <Border.Background><SolidColorBrush Color="#16A34A"/></Border.Background>
                         </Border>
-                        <Border Width="28" Height="28" CornerRadius="14" Cursor="Hand">
+                        <Border x:Name="Swatch5" Width="28" Height="28" CornerRadius="14" Cursor="Hand"
+                                Tag="#EA580C" MouseLeftButtonUp="ColorSwatch_Click">
                             <Border.Background><SolidColorBrush Color="#EA580C"/></Border.Background>
                         </Border>
                     </StackPanel>
@@ -248,7 +309,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="About" Style="{StaticResource SectionHeader}" Margin="0,0,0,8"/>
-                    <TextBlock Text="Stream Command  v1.0.0" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
+                    <TextBlock Text="Stream Command  v1.0.9" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
                     <TextBlock Text="All-in-one streaming companion — built for streamers, by a streamer."
                                Style="{StaticResource Muted}" Margin="0,3,0,0"/>
                 </StackPanel>

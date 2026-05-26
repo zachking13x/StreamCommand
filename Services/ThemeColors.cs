@@ -8,10 +8,10 @@ namespace StreamCommand.Services;
 /// </summary>
 public static class ThemeColors
 {
-    // Accent — muted sage
-    public static readonly Color Accent      = Color.FromRgb(0x6B, 0x9E, 0x85);
-    public static readonly Color AccentLight = Color.FromRgb(0x8A, 0xBB, 0xA6);
-    public static readonly Color AccentMuted = Color.FromRgb(0x1A, 0x2A, 0x22);
+    // Accent — mutable so ThemeService can update them at runtime
+    public static Color Accent      = Color.FromRgb(0x6B, 0x9E, 0x85);
+    public static Color AccentLight = Color.FromRgb(0x8A, 0xBB, 0xA6);
+    public static Color AccentMuted = Color.FromRgb(0x1A, 0x2A, 0x22);
 
     // Status
     public static readonly Color Success     = Color.FromRgb(0x22, 0xC5, 0x5E);

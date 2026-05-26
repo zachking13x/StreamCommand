@@ -30,9 +30,10 @@ public sealed class AutomationEngine
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private List<AutomationRule>          _rules      = new();
-    private string                        _channel    = "";
-    private readonly Dictionary<string, DateTime> _lastFired = new();   // H2: per-rule cooldown
+    private List<AutomationRule>                  _rules     = new();
+    private string                                _channel   = "";
+    // H2: per-rule 3-second cooldown. P4: cleared on ReloadFromSettings to prevent indefinite growth.
+    private readonly Dictionary<string, DateTime> _lastFired = new();
 
     /// <summary>
     /// Reload the active rule set from persisted settings.
@@ -40,6 +41,7 @@ public sealed class AutomationEngine
     /// </summary>
     public void ReloadFromSettings()
     {
+        _lastFired.Clear();   // P4: reset cooldowns between sessions / rule reloads
         var s    = SettingsService.Load();
         _channel = s.TwitchUsername;
 

@@ -227,7 +227,7 @@
                                 <TextBlock Text="What's New" VerticalAlignment="Center"/>
                                 <Border Background="{DynamicResource AccentBrush}" CornerRadius="8"
                                         Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="v1.0.7" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                                    <TextBlock Text="v1.0.9" Foreground="White" FontSize="9" FontWeight="Bold"/>
                                 </Border>
                             </StackPanel>
                         </StackPanel>

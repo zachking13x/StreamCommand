@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,23 +10,31 @@ namespace StreamCommand.Services;
 public record TwitchOAuthResult(string AccessToken, string RefreshToken, string ClientId, string Username);
 public record TokenValidation(bool IsValid, int ExpiresInSeconds, string Login);
 
+/// <summary>Describes exactly which step of the auth flow failed and why.</summary>
+public record TwitchAuthFailure(string Step, string Detail);
+
 /// <summary>
-/// Twitch OAuth 2.0 with PKCE (RFC 7636).
+/// Twitch OAuth 2.0 — Device Authorization Grant (RFC 8628).
 ///
-/// Why PKCE and not Implicit?
-///   Implicit grant does not issue refresh tokens — users must re-authorise every ~60 days.
-///   PKCE is the current standard for public desktop apps: no client_secret is embedded
-///   or required, and the flow issues a refresh token that auto-renews access silently.
+/// Why Device Code instead of PKCE?
+///   PKCE (authorization code) requires the Twitch app to be registered as a "Public"
+///   client in the developer console, or Twitch rejects the token exchange with
+///   "Invalid client credentials." Device Code flow requires only the Client ID — no
+///   client secret, no redirect URI, no local HTTP listener — and works for both public
+///   and confidential Twitch app types. It issues a refresh token just like PKCE.
 ///
-/// The Client ID is intentionally public — it appears in every OAuth redirect URL and in
-/// the compiled binary. This is by design for public desktop clients with no server-side
-/// component. See RFC 7636: https://www.rfc-editor.org/rfc/rfc7636
+/// Flow:
+///   1. POST /oauth2/device → get user_code + device_code
+///   2. Open browser to twitch.tv/activate, show user_code in UI
+///   3. Poll /oauth2/token every 5 s until user approves (or times out / cancels)
+///   4. On approval: receive access_token + refresh_token, fetch username
+///
+/// The Client ID is intentionally public — it appears in the device request and in
+/// every URL shown to the user. This is by design for public desktop clients.
 /// </summary>
 public static class TwitchOAuthService
 {
-    public const  string ClientId    = "mtnw6mhjoibv7h9yxzxekkrax4s9mt";
-    private const int    ListenPort  = 47821;
-    private const string RedirectUri = "http://localhost:47821/callback";
+    public const string ClientId = "mtnw6mhjoibv7h9yxzxekkrax4s9mt";
 
     private static readonly string[] Scopes =
     {
@@ -40,115 +45,172 @@ public static class TwitchOAuthService
         "channel:read:redemptions",
     };
 
-    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     // ── Authorization ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens Twitch OAuth in the browser, receives the authorization code via local
-    /// redirect, exchanges it for access + refresh tokens (PKCE), and returns the result.
-    /// Returns null if the user cancelled, timed out, or an error occurred.
+    /// Failure reason from the most recent <see cref="AuthorizeAsync"/> call.
+    /// Null when the last call succeeded.
     /// </summary>
-    public static async Task<TwitchOAuthResult?> AuthorizeAsync()
+    public static TwitchAuthFailure? LastFailure { get; private set; }
+
+    /// <summary>
+    /// Runs the Device Code OAuth flow.
+    ///
+    /// <paramref name="onCodeReady"/> fires as soon as Twitch issues the device code.
+    /// The callback receives (userCode, verificationUri) so the UI can display the
+    /// short code while this method continues polling in the background.
+    ///
+    /// Returns null on failure; inspect <see cref="LastFailure"/> for the reason.
+    /// </summary>
+    public static async Task<TwitchOAuthResult?> AuthorizeAsync(
+        Action<string, string>? onCodeReady = null,
+        CancellationToken cancellationToken = default)
     {
-        var state        = Guid.NewGuid().ToString("N");
-        var verifier     = GenerateCodeVerifier();
-        var challenge    = GenerateCodeChallenge(verifier);
-        var scope        = Uri.EscapeDataString(string.Join(" ", Scopes));
+        LastFailure = null;
 
-        var authUrl = "https://id.twitch.tv/oauth2/authorize"
-                    + $"?client_id={ClientId}"
-                    + $"&redirect_uri={Uri.EscapeDataString(RedirectUri)}"
-                    + $"&response_type=code"
-                    + $"&scope={scope}"
-                    + $"&state={Uri.EscapeDataString(state)}"
-                    + $"&code_challenge={challenge}"
-                    + $"&code_challenge_method=S256";
+        // ── Step 1: request a device code ────────────────────────────────────
+        var session = await RequestDeviceCodeAsync();
+        if (session == null) return null;   // LastFailure set inside
 
-        AppLaunchService.OpenUrl(authUrl);
+        // ── Step 2: hand the code to the UI, open browser ────────────────────
+        onCodeReady?.Invoke(session.UserCode, session.VerificationUri);
+        AppLaunchService.OpenUrl(session.VerificationUri);
 
-        // ── Receive the authorization code ────────────────────────────────────
-        using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{ListenPort}/");
-        listener.Start();
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-
-        string? code          = null;
-        string? returnedState = null;
-
-        try
-        {
-            while (!cts.Token.IsCancellationRequested)
-            {
-                var ctx  = await listener.GetContextAsync().WaitAsync(cts.Token);
-                var req  = ctx.Request;
-                var resp = ctx.Response;
-
-                if (req.Url?.AbsolutePath == "/callback")
-                {
-                    code          = req.QueryString["code"];
-                    returnedState = req.QueryString["state"];
-                    var error     = req.QueryString["error"];
-
-                    // Serve a friendly page so the user can close the browser tab
-                    var html  = string.IsNullOrEmpty(error) ? SuccessHtml() : ErrorHtml(error ?? "unknown_error");
-                    var bytes = Encoding.UTF8.GetBytes(html);
-                    resp.ContentType     = "text/html; charset=utf-8";
-                    resp.ContentLength64 = bytes.Length;
-                    await resp.OutputStream.WriteAsync(bytes, cts.Token);
-                    resp.Close();
-                    break;
-                }
-
-                resp.StatusCode = 404;
-                resp.Close();
-            }
-        }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            try { listener.Stop(); } catch { }
-        }
-
-        if (string.IsNullOrEmpty(code) || returnedState != state)
-            return null;
-
-        // ── Exchange code for tokens ──────────────────────────────────────────
-        var tokens = await ExchangeCodeAsync(code, verifier);
-        if (tokens == null) return null;
-
-        var username = await FetchUsernameAsync(tokens.Value.access);
-        if (string.IsNullOrEmpty(username)) return null;
-
-        return new TwitchOAuthResult(tokens.Value.access, tokens.Value.refresh, ClientId, username);
+        // ── Step 3: poll until approved, expired, or cancelled ───────────────
+        return await PollForTokenAsync(session, cancellationToken);
     }
 
-    // ── Token exchange ────────────────────────────────────────────────────────
+    // ── Device code request ───────────────────────────────────────────────────
 
-    private static async Task<(string access, string refresh)?> ExchangeCodeAsync(string code, string verifier)
+    private record DeviceSession(
+        string DeviceCode,
+        string UserCode,
+        string VerificationUri,
+        int    ExpiresInSeconds,
+        int    IntervalSeconds);
+
+    private static async Task<DeviceSession?> RequestDeviceCodeAsync()
     {
         try
         {
             var form = new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                ["client_id"]     = ClientId,
-                ["code"]          = code,
-                ["code_verifier"] = verifier,
-                ["grant_type"]    = "authorization_code",
-                ["redirect_uri"]  = RedirectUri,
+                ["client_id"] = ClientId,
+                ["scopes"]    = string.Join(" ", Scopes),
             });
 
-            var resp = await _http.PostAsync("https://id.twitch.tv/oauth2/token", form);
+            var resp = await _http.PostAsync("https://id.twitch.tv/oauth2/device", form);
             var json = await resp.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(json);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                LastFailure = new TwitchAuthFailure("DeviceCode",
+                    $"Twitch rejected device code request (HTTP {(int)resp.StatusCode}): {Truncate(json)}");
+                return null;
+            }
+
+            using var doc  = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            var access  = root.GetProperty("access_token").GetString() ?? "";
-            var refresh = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() ?? "" : "";
-            return string.IsNullOrEmpty(access) ? null : (access, refresh);
+            return new DeviceSession(
+                DeviceCode:       root.GetProperty("device_code").GetString()!,
+                UserCode:         root.GetProperty("user_code").GetString()!,
+                VerificationUri:  root.TryGetProperty("verification_uri", out var vu)
+                                      ? vu.GetString()!
+                                      : "https://www.twitch.tv/activate",
+                ExpiresInSeconds: root.TryGetProperty("expires_in", out var ei) ? ei.GetInt32() : 1800,
+                IntervalSeconds:  root.TryGetProperty("interval",   out var iv) ? iv.GetInt32() : 5);
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            LastFailure = new TwitchAuthFailure("DeviceCode", $"Network error: {ex.Message}");
+            return null;
+        }
+    }
+
+    // ── Polling ───────────────────────────────────────────────────────────────
+
+    private static async Task<TwitchOAuthResult?> PollForTokenAsync(
+        DeviceSession session, CancellationToken externalCt)
+    {
+        // Honour both external cancellation and the device code expiry window
+        using var expiryCts = new CancellationTokenSource(TimeSpan.FromSeconds(session.ExpiresInSeconds));
+        using var linked    = CancellationTokenSource.CreateLinkedTokenSource(externalCt, expiryCts.Token);
+        var ct = linked.Token;
+
+        // Twitch says don't poll faster than interval; add 1 s buffer
+        var interval = TimeSpan.FromSeconds(Math.Max(session.IntervalSeconds, 5) + 1);
+
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(interval, ct); }
+            catch (OperationCanceledException) { break; }
+
+            try
+            {
+                var form = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["client_id"]   = ClientId,
+                    ["device_code"] = session.DeviceCode,
+                    ["grant_type"]  = "urn:ietf:params:oauth:grant-type:device_code",
+                });
+
+                var resp = await _http.PostAsync("https://id.twitch.tv/oauth2/token", form);
+                var json = await resp.Content.ReadAsStringAsync();
+
+                // Still waiting for the user to click Authorize
+                if (!resp.IsSuccessStatusCode)
+                {
+                    // "authorization_pending" is the normal "not yet" response — keep looping
+                    if (json.Contains("authorization_pending") || json.Contains("slow_down"))
+                        continue;
+
+                    // Any other error (e.g. "expired_token", "access_denied") is terminal
+                    LastFailure = new TwitchAuthFailure("Poll",
+                        $"Twitch error (HTTP {(int)resp.StatusCode}): {Truncate(json)}");
+                    return null;
+                }
+
+                // Success — parse tokens
+                using var doc  = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("access_token", out var at) ||
+                    string.IsNullOrEmpty(at.GetString()))
+                {
+                    LastFailure = new TwitchAuthFailure("Poll",
+                        $"Token response missing access_token: {Truncate(json)}");
+                    return null;
+                }
+
+                var access  = at.GetString()!;
+                var refresh = root.TryGetProperty("refresh_token", out var rt)
+                                  ? rt.GetString() ?? "" : "";
+
+                // Fetch the Twitch username to complete the result
+                var username = await FetchUsernameAsync(access);
+                if (string.IsNullOrEmpty(username))
+                {
+                    LastFailure = new TwitchAuthFailure("UserFetch",
+                        "Tokens received but could not retrieve Twitch username.");
+                    return null;
+                }
+
+                return new TwitchOAuthResult(access, refresh, ClientId, username);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { /* transient network error — try again next interval */ }
+        }
+
+        if (externalCt.IsCancellationRequested)
+            LastFailure = new TwitchAuthFailure("Cancelled", "Connection cancelled.");
+        else
+            LastFailure = new TwitchAuthFailure("Timeout",
+                "Device code expired — the code was not approved within the time limit.");
+
+        return null;
     }
 
     // ── Token refresh ─────────────────────────────────────────────────────────
@@ -229,46 +291,6 @@ public static class TwitchOAuthService
         catch { return null; }
     }
 
-    private static string GenerateCodeVerifier()
-    {
-        var bytes = new byte[64];
-        RandomNumberGenerator.Fill(bytes);
-        return Base64UrlEncode(bytes);
-    }
-
-    private static string GenerateCodeChallenge(string verifier)
-    {
-        var hash = SHA256.HashData(Encoding.ASCII.GetBytes(verifier));
-        return Base64UrlEncode(hash);
-    }
-
-    private static string Base64UrlEncode(byte[] bytes)
-        => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-    // ── Callback HTML pages ───────────────────────────────────────────────────
-
-    private static string SuccessHtml() => """
-        <!DOCTYPE html><html><head><meta charset="utf-8"/>
-        <title>Stream Command — Connected</title>
-        <style>body{background:#191C1E;color:#D4DDD6;font-family:system-ui,sans-serif;
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
-        height:100vh;margin:0;gap:14px;}
-        h2{color:#8ABBA6;margin:0;font-size:20px;}
-        p{color:#5E6E66;font-size:14px;margin:0;}</style></head>
-        <body><h2>✓  Connected to Twitch!</h2>
-        <p>You can close this tab and return to Stream Command.</p></body></html>
-        """;
-
-    private static string ErrorHtml(string error) => $$"""
-        <!DOCTYPE html><html><head><meta charset="utf-8"/>
-        <title>Stream Command — Error</title>
-        <style>body{background:#191C1E;color:#D4DDD6;font-family:system-ui,sans-serif;
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
-        height:100vh;margin:0;gap:14px;}
-        h2{color:#EF4444;margin:0;font-size:20px;}
-        p{color:#5E6E66;font-size:14px;margin:0;}</style></head>
-        <body><h2>⚠  Authorisation failed</h2>
-        <p>{{System.Security.SecurityElement.Escape(error)}}</p>
-        <p>Close this tab and try again in Stream Command.</p></body></html>
-        """;
+    private static string Truncate(string s, int max = 250)
+        => s.Length <= max ? s : s[..max] + "…";
 }

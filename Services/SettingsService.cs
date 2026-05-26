@@ -86,6 +86,15 @@ public class AppSettings
     /// </summary>
     public List<string> CelebratedMilestones { get; set; } = new();
 
+    /// <summary>User-added custom Quick Launch apps (saved across sessions).</summary>
+    public List<QuickLaunchItem> CustomQuickLaunchItems { get; set; } = new();
+
+    /// <summary>User-added Growth goals (saved across sessions).</summary>
+    public List<GrowthGoal> GrowthGoals { get; set; } = new();
+
+    /// <summary>Hex of the user's chosen accent colour (e.g. "#6B9E85").</summary>
+    public string AccentColor { get; set; } = "#6B9E85";
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
@@ -165,11 +174,14 @@ public static class SettingsService
             DiscordInvite        = settings.DiscordInvite,
             OBSWebSocketPort     = settings.OBSWebSocketPort,
             SetupComplete        = settings.SetupComplete,
-            PlannerEvents        = settings.PlannerEvents,
-            AutomationRules      = settings.AutomationRules,
-            NotifiedEventIds     = settings.NotifiedEventIds,
-            CelebratedMilestones = settings.CelebratedMilestones,
-            ChatCommands         = settings.ChatCommands,
+            PlannerEvents           = settings.PlannerEvents,
+            AutomationRules         = settings.AutomationRules,
+            NotifiedEventIds        = settings.NotifiedEventIds,
+            CelebratedMilestones    = settings.CelebratedMilestones,
+            ChatCommands            = settings.ChatCommands,
+            CustomQuickLaunchItems  = settings.CustomQuickLaunchItems,
+            GrowthGoals             = settings.GrowthGoals,
+            AccentColor             = settings.AccentColor,
 
             TwitchChatToken      = CredentialProtection.Protect(settings.TwitchChatToken),
             TwitchRefreshToken   = CredentialProtection.Protect(settings.TwitchRefreshToken),

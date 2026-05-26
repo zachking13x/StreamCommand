@@ -289,9 +289,13 @@ public class OBSWebSocketService
         await _ws.SendAsync(bytes, WebSocketMessageType.Text, true, _cts?.Token ?? CancellationToken.None);
     }
 
+    // SECURITY 2: cap inbound OBS messages at 4 MB — prevents unbounded memory growth
+    private const int MaxMessageBytes = 4 * 1024 * 1024;
+
     /// <summary>
     /// Reads a complete WebSocket message, handling multi-frame fragmentation.
     /// OBS can send scene-list responses larger than a single frame for complex setups.
+    /// Throws InvalidOperationException if the total message exceeds 4 MB.
     /// </summary>
     private async Task<JsonNode?> ReceiveAsync()
     {
@@ -305,6 +309,8 @@ public class OBSWebSocketService
         {
             result = await _ws.ReceiveAsync(buffer, _cts?.Token ?? CancellationToken.None);
             if (result.MessageType == WebSocketMessageType.Close) return null;
+            if (sb.Length + result.Count > MaxMessageBytes)
+                throw new InvalidOperationException("OBS message exceeded 4 MB size limit.");
             sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
         }
         while (!result.EndOfMessage);

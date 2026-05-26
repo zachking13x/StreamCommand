@@ -32,6 +32,12 @@ public partial class QuickLaunchView : UserControl
     public QuickLaunchView()
     {
         InitializeComponent();
+
+        // BUG 2: load persisted custom apps on top of the hardcoded defaults
+        var s = SettingsService.Load();
+        foreach (var custom in s.CustomQuickLaunchItems)
+            _apps.Add(custom);
+
         BuildCategoryFilters();
         RenderTiles();
     }
@@ -54,8 +60,8 @@ public partial class QuickLaunchView : UserControl
             };
             if (cat == _activeCategory)
             {
-                btn.Background = new SolidColorBrush(Color.FromArgb(0x30, 0x7C, 0x3A, 0xED));
-                btn.Foreground = (Brush)FindResource("AccentLight");
+                btn.Background  = new SolidColorBrush(Color.FromArgb(0x30, 0x6B, 0x9E, 0x85));   // sage tint
+                btn.Foreground  = (Brush)FindResource("AccentLight");
                 btn.BorderBrush = (Brush)FindResource("AccentBorder");
             }
             btn.Click += (_, _) => { _activeCategory = c; BuildCategoryFilters(); RenderTiles(); };
@@ -108,7 +114,7 @@ public partial class QuickLaunchView : UserControl
             tile.MouseEnter += (_, _) =>
             {
                 tile.BorderBrush = (Brush)FindResource("AccentBorder");
-                tile.Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
+                tile.Background  = (Brush)FindResource("HoverBackground");
             };
             tile.MouseLeave += (_, _) =>
             {
@@ -130,13 +136,21 @@ public partial class QuickLaunchView : UserControl
     private void SaveApp_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(LabelInput.Text) || string.IsNullOrWhiteSpace(UrlInput.Text)) return;
-        _apps.Add(new QuickLaunchItem
+
+        var newItem = new QuickLaunchItem
         {
-            Label = LabelInput.Text,
-            Url = UrlInput.Text,
-            Emoji = string.IsNullOrWhiteSpace(EmojiInput.Text) ? "🔗" : EmojiInput.Text,
-            Category = string.IsNullOrWhiteSpace(CategoryInput.Text) ? "Tools" : CategoryInput.Text
-        });
+            Label    = LabelInput.Text.Trim(),
+            Url      = UrlInput.Text.Trim(),
+            Emoji    = string.IsNullOrWhiteSpace(EmojiInput.Text) ? "🔗" : EmojiInput.Text.Trim(),
+            Category = string.IsNullOrWhiteSpace(CategoryInput.Text) ? "Tools" : CategoryInput.Text.Trim()
+        };
+        _apps.Add(newItem);
+
+        // BUG 2: persist custom app so it survives restarts
+        var s = SettingsService.Load();
+        s.CustomQuickLaunchItems.Add(newItem);
+        SettingsService.Save(s);
+
         LabelInput.Text = UrlInput.Text = "";
         AddForm.Visibility = Visibility.Collapsed;
         BuildCategoryFilters();
