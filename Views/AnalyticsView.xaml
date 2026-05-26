@@ -17,9 +17,9 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="ApiStatusText"
                                Foreground="{DynamicResource MutedText}" FontSize="11"/>
-                    <TextBlock Text=" — Add your Twitch Client ID in Settings for live data."
-                               Foreground="{DynamicResource MutedText}" FontSize="11"
-                               x:Name="ApiHintText"/>
+                    <TextBlock x:Name="ApiHintText"
+                               Text=" — Connect your Twitch account in Settings to see live data."
+                               Foreground="{DynamicResource MutedText}" FontSize="11"/>
                 </StackPanel>
             </Border>
 
@@ -73,7 +73,17 @@
                     <!-- Follower Growth Chart -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                         <StackPanel>
-                            <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}"
+                                           VerticalAlignment="Center"/>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        Background="{DynamicResource CardBackground}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="4" Padding="6,2">
+                                    <TextBlock Text="Sample data" Foreground="{DynamicResource MutedText}"
+                                               FontSize="10" FontStyle="Italic"/>
+                                </Border>
+                            </Grid>
                             <Canvas x:Name="FollowerChart" Height="160"
                                     ClipToBounds="True"
                                     Loaded="FollowerChart_Loaded"

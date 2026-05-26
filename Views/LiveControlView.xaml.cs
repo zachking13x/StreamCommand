@@ -24,7 +24,12 @@ public partial class LiveControlView : UserControl
     private string[] _scenes = _fallbackScenes;
     private string   _activeSceneName = "";
 
-    private readonly OBSWebSocketService _obs = new();
+    // H5: use the app-wide singleton — never create a new instance in a view
+    private static OBSWebSocketService _obs => OBSWebSocketService.Shared;
+
+    // M5: auto-detected audio source names (populated when OBS connects)
+    private string _detectedMicName    = "";
+    private string _detectedOutputName = "";
 
     public LiveControlView()
     {
@@ -44,6 +49,14 @@ public partial class LiveControlView : UserControl
             {
                 _scenes = scenes;
                 BuildSceneButtons(_scenes);
+            });
+
+        // M5/L3: capture first detected mic and output names for mute/volume control
+        _obs.AudioInputsLoaded += ((string[] Mics, string[] Outputs) inputs) =>
+            Dispatcher.Invoke(() =>
+            {
+                if (inputs.Mics.Length > 0)    _detectedMicName    = inputs.Mics[0];
+                if (inputs.Outputs.Length > 0) _detectedOutputName = inputs.Outputs[0];
             });
 
         // Stream timer tick
@@ -185,7 +198,7 @@ public partial class LiveControlView : UserControl
         GoLiveButton.Content    = "▶   Go Live";
         GoLiveButton.Style      = (Style)FindResource("PrimaryButton");
         StreamStatusText.Text   = "OBS connected — ready to go live";
-        LiveIndicatorBg.Color   = Color.FromRgb(0x2E, 0x10, 0x65);
+        LiveIndicatorBg.Color   = Color.FromRgb(0x1A, 0x2A, 0x22);   // UI7: sage dark, not purple
         LiveDot.Foreground      = (Brush)FindResource("AccentLight");
         OfflineBanner.Visibility = Visibility.Visible;
 
@@ -238,7 +251,7 @@ public partial class LiveControlView : UserControl
         btn.Style = (Style)FindResource("SecondaryButton");
         if (active)
         {
-            btn.Background  = new SolidColorBrush(Color.FromArgb(0x40, 0x7C, 0x3A, 0xED));
+            btn.Background  = new SolidColorBrush(Color.FromArgb(0x40, 0x6B, 0x9E, 0x85));   // UI7: sage tint
             btn.Foreground  = (Brush)FindResource("AccentLight");
             btn.BorderBrush = (Brush)FindResource("AccentBorder");
         }
@@ -246,25 +259,41 @@ public partial class LiveControlView : UserControl
 
     // ── Audio sliders ────────────────────────────────────────────────────────
 
-    private void DesktopSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        => DesktopAudioPct.Text = $"{(int)e.NewValue}%";
+    // L3: update label AND push volume to OBS in real-time
+    private async void DesktopSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        DesktopAudioPct.Text = $"{(int)e.NewValue}%";
+        if (!string.IsNullOrEmpty(_detectedOutputName))
+            await _obs.SetInputVolumeAsync(_detectedOutputName, e.NewValue / 100.0);
+    }
 
-    private void MicSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        => MicAudioPct.Text = $"{(int)e.NewValue}%";
+    private async void MicSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        MicAudioPct.Text = $"{(int)e.NewValue}%";
+        if (!string.IsNullOrEmpty(_detectedMicName))
+            await _obs.SetInputVolumeAsync(_detectedMicName, e.NewValue / 100.0);
+    }
 
     // ── Mic / Cam toggles ────────────────────────────────────────────────────
 
-    private void MicButton_Click(object sender, RoutedEventArgs e)
+    // M5: toggle mute in OBS via the auto-detected mic source name
+    private async void MicButton_Click(object sender, RoutedEventArgs e)
     {
         _micOn = !_micOn;
         MicButton.Content    = _micOn ? "🎙  Mic On" : "🔇  Mic Off";
         MicButton.Foreground = _micOn
             ? (Brush)FindResource("SecondaryText")
             : (Brush)FindResource("DangerBrush");
+
+        // Mute = NOT _micOn (muted when mic is "off")
+        if (!string.IsNullOrEmpty(_detectedMicName))
+            await _obs.SetInputMuteAsync(_detectedMicName, !_micOn);
     }
 
     private void CamButton_Click(object sender, RoutedEventArgs e)
     {
+        // Cam source is a video capture device, not an audio input — no OBS mute API needed.
+        // Future: use SetSourceFilterEnabled to toggle a visibility filter on the cam source.
         _camOn = !_camOn;
         CamButton.Content    = _camOn ? "📷  Cam On" : "🚫  Cam Off";
         CamButton.Foreground = _camOn

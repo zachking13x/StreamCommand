@@ -49,9 +49,14 @@ namespace StreamCommand.Services
                 var ctx = EnsureContext();
                 if (ctx == null)
                 {
-                    // Outside Store context (dev / sideloaded) — trust the pending cache value
-                    // so the developer can test Pro features without a real subscription.
-                    IsPro = IsProPending;
+                    // Outside Store context — default to free tier so no one can bypass
+                    // by simply not being in the Store environment.
+                    // Developers can set env var STREAMCMD_PRO_OVERRIDE=1 for local testing.
+#if DEBUG
+                    IsPro = Environment.GetEnvironmentVariable("STREAMCMD_PRO_OVERRIDE") == "1";
+#else
+                    IsPro = false;
+#endif
                     Refreshed?.Invoke();
                     return;
                 }
@@ -81,9 +86,12 @@ namespace StreamCommand.Services
             }
             catch
             {
-                // GetAppLicenseAsync throws COMException when the app runs outside the Store
-                // context (e.g. sideloaded during development). Fall back to the pending cache value.
-                IsPro = IsProPending;
+                // GetAppLicenseAsync threw — treat as free tier in production.
+#if DEBUG
+                IsPro = Environment.GetEnvironmentVariable("STREAMCMD_PRO_OVERRIDE") == "1";
+#else
+                IsPro = false;
+#endif
                 Refreshed?.Invoke();
             }
         }

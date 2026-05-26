@@ -112,7 +112,7 @@ public class TwitchChatService
 
     private async Task ListenLoopAsync()
     {
-        var buf = new byte[8192];
+        var buf = new byte[65536];   // 64 KB — prevents split on large multi-byte IRC frames
         var sb  = new StringBuilder();
 
         try

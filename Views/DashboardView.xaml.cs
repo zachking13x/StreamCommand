@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using StreamCommand.Services;
+using TC = StreamCommand.Services.ThemeColors;
 
 namespace StreamCommand.Views;
 
@@ -338,8 +339,8 @@ public partial class DashboardView : UserControl
         {
             Points = fillPoints,
             Fill   = new LinearGradientBrush(
-                Color.FromArgb(70, 0x7C, 0x3A, 0xED),
-                Color.FromArgb(5,  0x7C, 0x3A, 0xED),
+                Color.FromArgb(0x14, TC.Accent.R, TC.Accent.G, TC.Accent.B),
+                Color.FromArgb(0x05, TC.Accent.R, TC.Accent.G, TC.Accent.B),
                 new Point(0, 0), new Point(0, 1)),
             Stroke = Brushes.Transparent
         });
@@ -347,8 +348,8 @@ public partial class DashboardView : UserControl
         ViewerChart.Children.Add(new Polyline
         {
             Points          = linePoints,
-            Stroke          = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
-            StrokeThickness = 2,
+            Stroke          = new SolidColorBrush(TC.Accent),
+            StrokeThickness = 1.5,
             StrokeLineJoin  = PenLineJoin.Round
         });
 
@@ -356,8 +357,8 @@ public partial class DashboardView : UserControl
         var dot = new Ellipse
         {
             Width = 8, Height = 8,
-            Fill   = new SolidColorBrush(Color.FromRgb(0xA7, 0x8B, 0xFA)),
-            Stroke = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)),
+            Fill   = new SolidColorBrush(TC.AccentLight),
+            Stroke = new SolidColorBrush(TC.AppBg),
             StrokeThickness = 2
         };
         Canvas.SetLeft(dot, lastPt.X - 4);

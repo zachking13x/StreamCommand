@@ -30,8 +30,9 @@ public sealed class AutomationEngine
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private List<AutomationRule> _rules   = new();
-    private string               _channel = "";
+    private List<AutomationRule>          _rules      = new();
+    private string                        _channel    = "";
+    private readonly Dictionary<string, DateTime> _lastFired = new();   // H2: per-rule cooldown
 
     /// <summary>
     /// Reload the active rule set from persisted settings.
@@ -48,9 +49,22 @@ public sealed class AutomationEngine
         var savedIds  = new HashSet<string>(saved.Select(r => r.Id));
         var defaults  = new AppSettings().AutomationRules;
 
+        bool merged = false;
         foreach (var def in defaults)
+        {
             if (!savedIds.Contains(def.Id))
+            {
                 saved.Add(def);
+                merged = true;
+            }
+        }
+
+        // L2: persist merged defaults so they appear in the UI on next launch
+        if (merged)
+        {
+            s.AutomationRules = saved;
+            SettingsService.Save(s);
+        }
 
         _rules = saved.Where(r => r.IsEnabled).ToList();
     }
@@ -59,49 +73,74 @@ public sealed class AutomationEngine
 
     private async void OnMessage(TwitchChatMessage msg)
     {
-        if (string.IsNullOrWhiteSpace(_channel)) return;
-
-        foreach (var rule in _rules)
+        try   // H3: never crash the app from an unhandled automation exception
         {
-            if (!MatchesIrc(rule, msg)) continue;
+            if (string.IsNullOrWhiteSpace(_channel)) return;
 
-            var response = ExpandTemplate(rule.ResponseTemplate, msg);
-            if (!string.IsNullOrWhiteSpace(response))
-                await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+            foreach (var rule in _rules)
+            {
+                if (!MatchesIrc(rule, msg)) continue;
+                if (!TryAcquireCooldown(rule)) break;   // H2: skip if within 3-second window
 
-            break;   // only the first matching rule fires per event
+                var response = ExpandTemplate(rule.ResponseTemplate, msg);
+                if (!string.IsNullOrWhiteSpace(response))
+                    await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+
+                break;   // only the first matching rule fires per event
+            }
         }
+        catch { /* Swallow — automation errors must never propagate to the UI thread */ }
     }
 
     // ── EventSub follow handler ───────────────────────────────────────────────
 
     private async void OnFollowReceived(string userName)
     {
-        if (string.IsNullOrWhiteSpace(_channel)) return;
-
-        // Build a synthetic message so ExpandTemplate can use @user
-        var followMsg = new TwitchChatMessage
+        try   // H3: never crash the app from an unhandled automation exception
         {
-            Username  = userName,
-            EventType = TwitchEventType.Follow,
-            Text      = $"🌟 {userName} just followed!",
-            IsAlert   = true,
-            Time      = DateTime.Now
-        };
+            if (string.IsNullOrWhiteSpace(_channel)) return;
 
-        // Raise a visible alert in the chat monitor / overlay
-        StreamEvents.RaiseAlert("🌟", followMsg.Text);
+            // Build a synthetic message so ExpandTemplate can use @user
+            var followMsg = new TwitchChatMessage
+            {
+                Username  = userName,
+                EventType = TwitchEventType.Follow,
+                Text      = $"🌟 {userName} just followed!",
+                IsAlert   = true,
+                Time      = DateTime.Now
+            };
 
-        foreach (var rule in _rules)
-        {
-            if (rule.TriggerType != AutomationTrigger.NewFollower) continue;
+            // Raise a visible alert in the chat monitor / overlay
+            StreamEvents.RaiseAlert("🌟", followMsg.Text);
 
-            var response = ExpandTemplate(rule.ResponseTemplate, followMsg);
-            if (!string.IsNullOrWhiteSpace(response))
-                await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+            foreach (var rule in _rules)
+            {
+                if (rule.TriggerType != AutomationTrigger.NewFollower) continue;
+                if (!TryAcquireCooldown(rule)) break;   // H2
 
-            break;
+                var response = ExpandTemplate(rule.ResponseTemplate, followMsg);
+                if (!string.IsNullOrWhiteSpace(response))
+                    await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+
+                break;
+            }
         }
+        catch { /* Swallow — automation errors must never propagate to the UI thread */ }
+    }
+
+    // ── Cooldown guard ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns true and records the fire time when the rule is outside its 3-second cooldown.
+    /// Returns false (suppress) when it was fired within the last 3 seconds.
+    /// </summary>
+    private bool TryAcquireCooldown(AutomationRule rule)
+    {
+        var now = DateTime.UtcNow;
+        if (_lastFired.TryGetValue(rule.Id, out var last) && (now - last).TotalSeconds < 3)
+            return false;
+        _lastFired[rule.Id] = now;
+        return true;
     }
 
     // ── Trigger matching (IRC events only) ───────────────────────────────────

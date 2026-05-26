@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,6 +11,12 @@ public partial class SetupWizard : Window
     private int _step = 1;
     private const int TotalSteps = 5;
     private readonly OBSWebSocketService _obsTest = new();
+
+    // Holds the result of a successful OAuth flow so it can be persisted at Finish
+    private TwitchOAuthResult? _twitchAuth;
+
+    // M7: track whether OBS test passed so SaveAndBuildSummary can reflect it accurately
+    private bool _obsTestPassed;
 
     public SetupWizard()
     {
@@ -111,11 +118,15 @@ public partial class SetupWizard : Window
     {
         var s = SettingsService.Load();
 
-        // Twitch (step 2)
-        if (!string.IsNullOrWhiteSpace(UsernameBox.Text))
-            s.TwitchUsername = UsernameBox.Text.Trim();
-        if (ChatTokenBox.Password.Length > 0)
-            s.TwitchChatToken = ChatTokenBox.Password;
+        // Twitch (step 2) — already written by ConnectTwitch_Click; apply again in
+        // case the user connected and then navigated forward/backward.
+        if (_twitchAuth != null)
+        {
+            s.TwitchUsername     = _twitchAuth.Username;
+            s.TwitchChatToken    = _twitchAuth.AccessToken;
+            s.TwitchRefreshToken = _twitchAuth.RefreshToken;   // PKCE refresh token
+            s.TwitchClientId     = _twitchAuth.ClientId;
+        }
 
         // OBS (step 3)
         if (OBSPasswordBox.Password.Length > 0)
@@ -133,8 +144,9 @@ public partial class SetupWizard : Window
         SettingsService.Save(s);
 
         // Check if nothing was connected — show warning
-        bool hasTwitch  = !string.IsNullOrWhiteSpace(s.TwitchUsername) && !string.IsNullOrWhiteSpace(s.TwitchChatToken);
-        bool hasOBS     = !string.IsNullOrWhiteSpace(s.OBSWebSocketPassword) || s.OBSWebSocketPort != 4455;
+        bool hasTwitch  = !string.IsNullOrWhiteSpace(s.TwitchUsername) &&
+                          !string.IsNullOrWhiteSpace(s.TwitchChatToken);
+        bool hasOBS     = _obsTestPassed;   // M7: only true when the test actually succeeded
         bool hasYoutube = !string.IsNullOrWhiteSpace(s.YoutubeChannelId);
 
         NoConnectionWarning.Visibility = (!hasTwitch && !hasOBS && !hasYoutube)
@@ -143,11 +155,11 @@ public partial class SetupWizard : Window
 
         // Build a human-friendly summary
         var parts = new System.Collections.Generic.List<string>();
-        if (!string.IsNullOrWhiteSpace(s.TwitchUsername))         parts.Add($"Twitch: @{s.TwitchUsername}");
-        if (!string.IsNullOrWhiteSpace(s.TwitchChatToken))        parts.Add("Chat token saved");
+        if (!string.IsNullOrWhiteSpace(s.TwitchUsername))  parts.Add($"Twitch: @{s.TwitchUsername} ✓");
+        else if (!string.IsNullOrWhiteSpace(s.TwitchChatToken)) parts.Add("Twitch chat connected");
         if (!string.IsNullOrWhiteSpace(s.YoutubeChannelId))       parts.Add($"YouTube: {s.YoutubeChannelId[..Math.Min(12, s.YoutubeChannelId.Length)]}…");
-        if (!string.IsNullOrWhiteSpace(s.OBSWebSocketPassword) || s.OBSWebSocketPort != 4455)
-            parts.Add($"OBS WebSocket on port {s.OBSWebSocketPort}");
+        if (_obsTestPassed)
+            parts.Add($"OBS WebSocket on port {s.OBSWebSocketPort} ✓");
 
         SetupSummary.Text = parts.Count > 0
             ? string.Join("  ·  ", parts) + "\n\nYou can update anything in Settings at any time."
@@ -183,6 +195,7 @@ public partial class SetupWizard : Window
             case OBSState.Connected:
                 OBSTestResult.Text       = "✓  OBS connected successfully!";
                 OBSTestResult.Foreground = (Brush)FindResource("SuccessBrush");
+                _obsTestPassed = true;   // M7
                 _ = _obsTest.DisconnectAsync();
                 break;
             case OBSState.Error:
@@ -192,8 +205,46 @@ public partial class SetupWizard : Window
         }
     }
 
-    // ── External links ───────────────────────────────────────────────────────
+    // ── Twitch OAuth ─────────────────────────────────────────────────────────
 
-    private void OpenTMI_Click(object sender, RoutedEventArgs e)
-        => AppLaunchService.OpenUrl("https://twitchapps.com/tmi/");
+    private async void ConnectTwitch_Click(object sender, RoutedEventArgs e)
+    {
+        ConnectTwitchBtn.IsEnabled = false;
+        ConnectTwitchBtn.Content   = "Opening Twitch…";
+
+        try
+        {
+            var result = await TwitchOAuthService.AuthorizeAsync();
+
+            if (result != null)
+            {
+                _twitchAuth = result;
+
+                // Persist immediately so the rest of the wizard can read it
+                var s = SettingsService.Load();
+                s.TwitchUsername     = result.Username;
+                s.TwitchChatToken    = result.AccessToken;
+                s.TwitchRefreshToken = result.RefreshToken;   // PKCE refresh token
+                s.TwitchClientId     = result.ClientId;
+                SettingsService.Save(s);
+
+                // Show connected banner
+                TwitchConnectedText.Text       = $"Connected as @{result.Username}";
+                TwitchConnectedBanner.Visibility = Visibility.Visible;
+                ConnectTwitchBtn.Content        = "✓  Reconnect Twitch";
+            }
+            else
+            {
+                ConnectTwitchBtn.Content = "Connection failed — try again";
+            }
+        }
+        catch
+        {
+            ConnectTwitchBtn.Content = "Connection failed — try again";
+        }
+        finally
+        {
+            ConnectTwitchBtn.IsEnabled = true;
+        }
+    }
 }

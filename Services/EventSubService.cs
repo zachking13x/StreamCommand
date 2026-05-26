@@ -152,6 +152,7 @@ public sealed class EventSubService
     private async Task ReconnectAsync(string reconnectUrl, string broadcasterId, string clientId, string token)
     {
         var oldWs  = _ws;
+        var oldCts = _cts;   // capture before overwrite
         var newCts = new CancellationTokenSource();
         var newWs  = new ClientWebSocket();
 
@@ -161,9 +162,12 @@ public sealed class EventSubService
             _ws  = newWs;
             _cts = newCts;
             _ = Task.Run(() => ListenLoopAsync(broadcasterId, clientId, token), newCts.Token);
+
+            // Gracefully close and dispose the old socket/token after the new one is live
             if (oldWs?.State == WebSocketState.Open)
                 try { await oldWs.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
             oldWs?.Dispose();
+            try { oldCts?.Cancel(); oldCts?.Dispose(); } catch { }
         }
         catch { /* reconnect failed — keep old socket running */ }
     }

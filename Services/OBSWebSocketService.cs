@@ -20,6 +20,8 @@ public enum OBSState { Disconnected, Connecting, Connected, Error }
 /// </summary>
 public class OBSWebSocketService
 {
+    /// <summary>App-wide shared OBS connection. Use this everywhere — never create a new instance in a view.</summary>
+    public static readonly OBSWebSocketService Shared = new();
     private ClientWebSocket?         _ws;
     private CancellationTokenSource? _cts;
 
@@ -31,9 +33,10 @@ public class OBSWebSocketService
     public bool     IsStreaming  { get; private set; }
     public string   StatusMessage{ get; private set; } = "OBS: Not connected";
 
-    public event Action<OBSState>? StateChanged;
-    public event Action<bool>?     StreamingStateChanged;   // true = stream started
-    public event Action<string[]>? ScenesLoaded;            // fires when scene list is fetched
+    public event Action<OBSState>?                   StateChanged;
+    public event Action<bool>?                       StreamingStateChanged;         // true = stream started
+    public event Action<string[]>?                   ScenesLoaded;                  // fires when scene list is fetched
+    public event Action<(string[] Mics, string[] Outputs)>? AudioInputsLoaded;     // fires after scene list
 
     // ── Public API ──────────────────────────────────────────────────────────
 
@@ -84,9 +87,10 @@ public class OBSWebSocketService
 
             SetState(OBSState.Connected, "OBS: Connected ✓");
 
-            // Start the listen loop then immediately fetch the scene list
+            // Start the listen loop then immediately fetch the scene list and audio inputs
             _ = Task.Run(ListenLoopAsync);
             _ = Task.Run(FetchScenesAsync);
+            _ = Task.Run(FetchAudioInputsAsync);
 
             return true;
         }
@@ -133,6 +137,45 @@ public class OBSWebSocketService
 
     public async Task SetSceneAsync(string sceneName)
         => await SendRequestWithResponseAsync("SetCurrentProgramScene", new { sceneName });
+
+    /// <summary>Mutes or unmutes an OBS audio input by name.</summary>
+    public async Task SetInputMuteAsync(string inputName, bool muted)
+    {
+        if (State != OBSState.Connected || string.IsNullOrEmpty(inputName)) return;
+        await SendRequestAsync("SetInputMute", new { inputName, inputMuted = muted });
+    }
+
+    /// <summary>Sets the volume of an OBS audio input. <paramref name="volumeMul"/> is 0.0–1.0.</summary>
+    public async Task SetInputVolumeAsync(string inputName, double volumeMul)
+    {
+        if (State != OBSState.Connected || string.IsNullOrEmpty(inputName)) return;
+        await SendRequestAsync("SetInputVolume", new { inputName, inputVolumeMul = Math.Clamp(volumeMul, 0.0, 1.0) });
+    }
+
+    /// <summary>Returns audio inputs grouped by type (mics vs desktop/output).</summary>
+    public async Task<(string[] Mics, string[] Outputs)> GetAudioInputsAsync()
+    {
+        var resp   = await SendRequestWithResponseAsync("GetInputList");
+        var inputs = resp?["d"]?["responseData"]?["inputs"]?.AsArray();
+        if (inputs is null) return (Array.Empty<string>(), Array.Empty<string>());
+
+        var mics    = new List<string>();
+        var outputs = new List<string>();
+
+        foreach (var input in inputs)
+        {
+            var name = input?["inputName"]?.GetValue<string>();
+            var kind = input?["inputKind"]?.GetValue<string>()  ?? "";
+            if (name is null) continue;
+
+            // OBS Windows source kinds
+            if (kind.Contains("wasapi_input") || kind.Contains("coreaudio_input") || kind.Contains("dshow_input"))
+                mics.Add(name);
+            else if (kind.Contains("wasapi_output") || kind.Contains("coreaudio_output"))
+                outputs.Add(name);
+        }
+        return (mics.ToArray(), outputs.ToArray());
+    }
 
     public async Task DisconnectAsync()
     {
@@ -202,6 +245,13 @@ public class OBSWebSocketService
             ScenesLoaded?.Invoke(scenes);
     }
 
+    private async Task FetchAudioInputsAsync()
+    {
+        var (mics, outputs) = await GetAudioInputsAsync();
+        if (mics.Length > 0 || outputs.Length > 0)
+            AudioInputsLoaded?.Invoke((mics, outputs));
+    }
+
     private async Task<JsonNode?> SendRequestWithResponseAsync(string requestType, object? requestData = null)
     {
         if (State != OBSState.Connected) return null;
@@ -224,8 +274,13 @@ public class OBSWebSocketService
         catch { _pending.TryRemove(id, out _); return null; }
     }
 
-    private async Task SendRequestAsync(string requestType)
-        => await SendAsync(new { op = 6, d = new { requestType, requestId = Guid.NewGuid().ToString("N") } });
+    private async Task SendRequestAsync(string requestType, object? requestData = null)
+    {
+        object payload = requestData is null
+            ? (object)new { op = 6, d = new { requestType, requestId = Guid.NewGuid().ToString("N") } }
+            : new { op = 6, d = new { requestType, requestId = Guid.NewGuid().ToString("N"), requestData } };
+        await SendAsync(payload);
+    }
 
     private async Task SendAsync(object obj)
     {

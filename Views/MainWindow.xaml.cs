@@ -66,10 +66,28 @@ public partial class MainWindow : Window
         // ── T1: Start AutomationEngine with persisted rules ────────────────────
         AutomationEngine.Instance.ReloadFromSettings();
 
-        // ── Phase 1: Start EventSub for follow events ──────────────────────────
+        // ── Startup async work ────────────────────────────────────────────────
         Loaded += async (_, _) =>
         {
             var s = SettingsService.Load();
+
+            // Validate OAuth token — silently refresh if expired
+            if (!string.IsNullOrWhiteSpace(s.TwitchChatToken))
+            {
+                var validation = await TwitchOAuthService.ValidateTokenAsync(s.TwitchChatToken);
+                if (!validation.IsValid && !string.IsNullOrWhiteSpace(s.TwitchRefreshToken))
+                {
+                    var refreshed = await TwitchOAuthService.RefreshTokenAsync(s.TwitchRefreshToken);
+                    if (refreshed.HasValue)
+                    {
+                        s.TwitchChatToken    = refreshed.Value.access;
+                        s.TwitchRefreshToken = refreshed.Value.refresh;
+                        SettingsService.Save(s);
+                    }
+                }
+            }
+
+            // Start EventSub for follow events
             if (!string.IsNullOrWhiteSpace(s.TwitchUsername) &&
                 !string.IsNullOrWhiteSpace(s.TwitchClientId)  &&
                 !string.IsNullOrWhiteSpace(s.TwitchChatToken))
@@ -78,12 +96,11 @@ public partial class MainWindow : Window
                     s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
             }
 
-            // Load persisted notification keys
-            var settings = SettingsService.Load();
-            foreach (var key in settings.NotifiedEventIds)
+            // Load persisted reminder keys (now uses stable PlannerEvent.Id)
+            foreach (var key in s.NotifiedEventIds)
                 _notifiedEventKeys.Add(key);
 
-            // Check immediately then every 30 minutes
+            // Check immediately — timer handles the recurring 30-minute checks
             CheckPreStreamReminders();
         };
 
@@ -142,7 +159,7 @@ public partial class MainWindow : Window
             {
                 if (ev.When <= now || ev.When > now.AddMinutes(60)) continue;
 
-                var key = $"{ev.Title}_{ev.When:yyyyMMddHHmm}";
+                var key = ev.Id;   // stable Guid — never collides on rename or duplicate title
                 if (_notifiedEventKeys.Contains(key)) continue;
 
                 _notifiedEventKeys.Add(key);
@@ -161,28 +178,5 @@ public partial class MainWindow : Window
     }
 
     private static void ShowToast(string title, string body)
-    {
-        try
-        {
-            // Sanitise inputs so they don't break the XML
-            title = System.Security.SecurityElement.Escape(title);
-            body  = System.Security.SecurityElement.Escape(body);
-
-            var xml = new Windows.Data.Xml.Dom.XmlDocument();
-            xml.LoadXml($"""
-                <toast>
-                  <visual>
-                    <binding template="ToastGeneric">
-                      <text>{title}</text>
-                      <text>{body}</text>
-                    </binding>
-                  </visual>
-                </toast>
-                """);
-            var toast = new Windows.UI.Notifications.ToastNotification(xml);
-            Windows.UI.Notifications.ToastNotificationManager
-                .CreateToastNotifier().Show(toast);
-        }
-        catch { /* Toast not available in all contexts (e.g. first run before identity is set) */ }
-    }
+        => ToastHelper.Show(title, body);
 }

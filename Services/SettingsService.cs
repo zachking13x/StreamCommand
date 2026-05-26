@@ -12,6 +12,8 @@ namespace StreamCommand.Services;
 /// </summary>
 public class PlannerEvent
 {
+    /// <summary>Stable Guid — used for reminder deduplication. Never changes on rename/edit.</summary>
+    public string   Id       { get; set; } = Guid.NewGuid().ToString();
     public string   Title    { get; set; } = "";
     public string   Platform { get; set; } = "Twitch";
     public DateTime When     { get; set; } = DateTime.Now.AddDays(1);
@@ -23,8 +25,9 @@ public class AppSettings
 {
     public string TwitchUsername      { get; set; } = "";
     public string TwitchClientId      { get; set; } = "";
-    public string TwitchClientSecret  { get; set; } = "";
-    public string TwitchChatToken     { get; set; } = "";   // oauth token for IRC chat — get free at twitchapps.com/tmi
+    public string TwitchClientSecret  { get; set; } = "";   // legacy field — kept for migration only
+    public string TwitchChatToken     { get; set; } = "";   // OAuth access token (PKCE)
+    public string TwitchRefreshToken  { get; set; } = "";   // OAuth refresh token — auto-renews access token
     public string YoutubeApiKey       { get; set; } = "";
     public string YoutubeChannelId    { get; set; } = "";
     public string StreamElementsToken { get; set; } = "";
@@ -100,29 +103,82 @@ public static class SettingsService
         "settings.json"
     );
 
-    public static AppSettings Load()
-    {
-        try
-        {
-            if (!File.Exists(SettingsPath)) return new AppSettings();
-            var json = File.ReadAllText(SettingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json, _jsonOpts) ?? new AppSettings();
-        }
-        catch
-        {
-            return new AppSettings();
-        }
-    }
+    // ── Write-through cache — prevents repeated disk reads on every poll/toggle ─
+    private static AppSettings? _cache;
 
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
-        WriteIndented    = true,
-        Converters       = { new JsonStringEnumConverter() }   // enums as strings in JSON
+        WriteIndented = true,
+        Converters    = { new JsonStringEnumConverter() }
     };
+
+    public static AppSettings Load()
+    {
+        if (_cache != null) return _cache;   // serve from cache
+
+        try
+        {
+            if (!File.Exists(SettingsPath))
+            {
+                _cache = new AppSettings();
+                return _cache;
+            }
+
+            var json     = File.ReadAllText(SettingsPath);
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, _jsonOpts) ?? new AppSettings();
+
+            // Unprotect DPAPI-wrapped secrets (backward-compat: plaintext values pass through)
+            settings.TwitchChatToken      = CredentialProtection.Unprotect(settings.TwitchChatToken);
+            settings.TwitchRefreshToken   = CredentialProtection.Unprotect(settings.TwitchRefreshToken);
+            settings.TwitchClientSecret   = CredentialProtection.Unprotect(settings.TwitchClientSecret);
+            settings.YoutubeApiKey        = CredentialProtection.Unprotect(settings.YoutubeApiKey);
+            settings.StreamElementsToken  = CredentialProtection.Unprotect(settings.StreamElementsToken);
+            settings.OBSWebSocketPassword = CredentialProtection.Unprotect(settings.OBSWebSocketPassword);
+
+            // Back-fill PlannerEvents that pre-date the stable-Id field
+            foreach (var ev in settings.PlannerEvents)
+                if (string.IsNullOrEmpty(ev.Id))
+                    ev.Id = Guid.NewGuid().ToString();
+
+            _cache = settings;
+            return _cache;
+        }
+        catch
+        {
+            _cache = new AppSettings();
+            return _cache;
+        }
+    }
 
     public static void Save(AppSettings settings)
     {
+        _cache = settings;   // keep cache current
+
         Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, _jsonOpts));
+
+        // Write a clone with DPAPI-protected secrets — never modify the live object
+        var toWrite = new AppSettings
+        {
+            TwitchUsername       = settings.TwitchUsername,
+            TwitchClientId       = settings.TwitchClientId,
+            YoutubeChannelId     = settings.YoutubeChannelId,
+            DiscordInvite        = settings.DiscordInvite,
+            OBSWebSocketPort     = settings.OBSWebSocketPort,
+            SetupComplete        = settings.SetupComplete,
+            PlannerEvents        = settings.PlannerEvents,
+            AutomationRules      = settings.AutomationRules,
+            NotifiedEventIds     = settings.NotifiedEventIds,
+            CelebratedMilestones = settings.CelebratedMilestones,
+            ChatCommands         = settings.ChatCommands,
+
+            TwitchChatToken      = CredentialProtection.Protect(settings.TwitchChatToken),
+            TwitchRefreshToken   = CredentialProtection.Protect(settings.TwitchRefreshToken),
+            TwitchClientSecret   = CredentialProtection.Protect(settings.TwitchClientSecret),
+            YoutubeApiKey        = CredentialProtection.Protect(settings.YoutubeApiKey),
+            StreamElementsToken  = CredentialProtection.Protect(settings.StreamElementsToken),
+            OBSWebSocketPassword = CredentialProtection.Protect(settings.OBSWebSocketPassword),
+        };
+
+        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(toWrite, _jsonOpts));
     }
 }

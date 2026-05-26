@@ -77,37 +77,11 @@
                         </StackPanel>
                     </Border>
 
-                    <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="Twitch Client ID" Style="{StaticResource Label}" Margin="0,0,0,4"/>
-                        <TextBox x:Name="TwitchClientId" Style="{StaticResource ModernTextBox}" Tag="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                            <TextBlock Text="From your " Style="{StaticResource Muted}"/>
-                            <TextBlock Text="Twitch Developer Console ↗"
-                                       Foreground="{DynamicResource AccentLight}"
-                                       FontSize="12"
-                                       Cursor="Hand"
-                                       MouseLeftButtonDown="OpenTwitchDev_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-
                     <!-- Password-field note -->
                     <Border Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
                         <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap"
                                    Text="🔒  Password fields are always blank when Settings opens — this is intentional. Leave any field blank to keep the currently saved value. Only type in a field if you want to change it."/>
                     </Border>
-
-                    <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="Twitch Client Secret" Style="{StaticResource Label}" Margin="0,0,0,4"/>
-                        <PasswordBox x:Name="TwitchClientSecret"
-                                     Background="{DynamicResource InputBackground}"
-                                     Foreground="{DynamicResource PrimaryText}"
-                                     BorderBrush="{DynamicResource BorderBrush}"
-                                     BorderThickness="1"
-                                     Padding="10,6"
-                                     FontSize="13"/>
-                        <TextBlock x:Name="TwitchClientSecretSaved" Text="✓  Already saved — leave blank to keep" Foreground="#22C55E" FontSize="11" Margin="0,3,0,0" Visibility="Collapsed"/>
-                        <TextBlock Text="Keep this secret — never share it publicly" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                    </StackPanel>
 
                     <StackPanel Margin="0,0,0,10">
                         <TextBlock Text="YouTube API Key" Style="{StaticResource Label}" Margin="0,0,0,4"/>
@@ -185,31 +159,43 @@
                 </StackPanel>
             </Border>
 
-            <!-- Twitch Chat -->
+            <!-- Twitch Connection (OAuth) -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="Twitch Chat Token" Style="{StaticResource SectionHeader}"/>
+                        <TextBlock Text="Twitch Connection" Style="{StaticResource SectionHeader}"/>
                         <TextBlock Style="{StaticResource Muted}" Margin="0,3,0,0"
-                                   Text="Lets Chat Monitor read your live chat. No app registration needed."/>
+                                   Text="Sign in with Twitch to enable chat, follower alerts, subscriber events, and channel stats."/>
                     </StackPanel>
-                    <StackPanel>
-                        <TextBlock Text="Twitch Chat OAuth Token" Style="{StaticResource Label}" Margin="0,0,0,4"/>
-                        <PasswordBox x:Name="TwitchChatToken"
-                                     Background="{DynamicResource InputBackground}"
-                                     Foreground="{DynamicResource PrimaryText}"
-                                     BorderBrush="{DynamicResource BorderBrush}"
-                                     BorderThickness="1" Padding="10,6" FontSize="13"/>
-                        <TextBlock x:Name="TwitchChatTokenSaved" Text="✓  Already saved — leave blank to keep" Foreground="#22C55E" FontSize="11" Margin="0,3,0,0" Visibility="Collapsed"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                            <TextBlock Text="Get your free token at " Style="{StaticResource Muted}"/>
-                            <TextBlock Text="twitchapps.com/tmi ↗"
-                                       Foreground="{DynamicResource AccentLight}"
-                                       FontSize="12" Cursor="Hand"
-                                       MouseLeftButtonDown="OpenTMI_Click"/>
-                            <TextBlock Text=" (sign in with Twitch)" Style="{StaticResource Muted}"/>
+
+                    <!-- Currently connected account -->
+                    <Border x:Name="TwitchConnectedBanner"
+                            Visibility="Collapsed"
+                            Background="#0D2A1A" BorderBrush="#22C55E"
+                            BorderThickness="1" CornerRadius="8"
+                            Padding="14,10" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="✓" Foreground="#22C55E" FontSize="16" FontWeight="Bold"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock x:Name="TwitchConnectedText"
+                                       Foreground="#86EFAC" FontSize="13" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Border>
+
+                    <Button x:Name="ConnectTwitchBtn"
+                            Style="{StaticResource PrimaryButton}"
+                            HorizontalAlignment="Left"
+                            Padding="16,9"
+                            Click="ConnectTwitch_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🟣" FontSize="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock Text="Connect with Twitch" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
+                               Text="Your access token is saved only on this PC and never transmitted to any server."/>
                 </StackPanel>
             </Border>
 
@@ -220,7 +206,7 @@
                     <TextBlock Text="ACCENT COLOR" Style="{StaticResource Label}" Margin="0,0,0,8"/>
                     <StackPanel Orientation="Horizontal">
                         <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand" BorderBrush="White" BorderThickness="2">
-                            <Border.Background><SolidColorBrush Color="#7C3AED"/></Border.Background>
+                            <Border.Background><SolidColorBrush Color="#6B9E85"/></Border.Background>
                         </Border>
                         <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,8,0" Cursor="Hand">
                             <Border.Background><SolidColorBrush Color="#2563EB"/></Border.Background>
