@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using StreamCommand.Services;
 
@@ -12,6 +13,19 @@ public partial class LiveControlView : UserControl
     private bool _isLive;
     private bool _micOn = true;
     private bool _camOn = true;
+
+    // Preview state
+    private bool _previewRunning;
+    private Action<BitmapSource>? _previewHandler;
+
+    // Audio meter state
+    private Action<Dictionary<string, float>>? _audioLevelsHandler;
+    private DateTime _lastMicSignalTime = DateTime.MinValue;
+
+    // Cached meter brushes — created once, reused at 20 Hz to avoid GC pressure
+    private static readonly SolidColorBrush _meterGreen = new(Color.FromRgb(0x22, 0xC5, 0x5E));
+    private static readonly SolidColorBrush _meterAmber = new(Color.FromRgb(0xF5, 0x9E, 0x0B));
+    private static readonly SolidColorBrush _meterRed   = new(Color.FromRgb(0xEF, 0x44, 0x44));
 
     // Stream timer
     private readonly DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -68,6 +82,26 @@ public partial class LiveControlView : UserControl
 
         // Try auto-connect on load (works if OBS is already open with no password)
         Loaded += async (_, _) => await TryConnectOBSAsync();
+
+        // Audio level meters — subscribe to the ~20 Hz push event from OBS
+        _audioLevelsHandler = levels =>
+            Dispatcher.BeginInvoke(() => OnAudioLevelsUpdated(levels));
+        _obs.AudioLevelsUpdated += _audioLevelsHandler;
+
+        // Stop capture when navigating away — do NOT stop OBS Virtual Camera itself
+        Unloaded += (_, _) =>
+        {
+            if (_previewHandler != null)
+                _ = VirtualCameraService.Instance.StopCaptureAsync(_previewHandler);
+            _previewHandler = null;
+            _previewRunning = false;
+
+            if (_audioLevelsHandler != null)
+                _obs.AudioLevelsUpdated -= _audioLevelsHandler;
+        };
+
+        // Re-evaluate Pro gate when Store confirms (or revokes) entitlement
+        EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyPreviewProGate);
     }
 
     // ── OBS Connection ───────────────────────────────────────────────────────
@@ -96,6 +130,8 @@ public partial class LiveControlView : UserControl
                 GoLiveButton.IsEnabled    = true;
                 StreamStatusText.Text     = "OBS connected — ready to go live";
                 OfflineBanner.Visibility  = Visibility.Collapsed;
+                PreviewPanel.Visibility   = Visibility.Visible;
+                ApplyPreviewProGate();
                 StreamEvents.RaiseOBSState(true);
                 break;
 
@@ -111,6 +147,14 @@ public partial class LiveControlView : UserControl
                 ConnectOBSButton.IsEnabled = true;
                 GoLiveButton.IsEnabled    = false;
                 OfflineBanner.Visibility  = Visibility.Visible;
+                PreviewPanel.Visibility   = Visibility.Collapsed;
+                // Stop any active capture and reset button state
+                if (_previewRunning) StopPreviewInternal();
+                // Reset meters to inactive grey
+                DesktopMeterFill.Width    = 0;
+                MicMeterFill.Width        = 0;
+                MicSilenceWarning.Visibility = Visibility.Collapsed;
+                _lastMicSignalTime        = DateTime.MinValue;
                 StreamEvents.RaiseOBSState(false);
                 if (state == OBSState.Disconnected && _isLive)
                 {
@@ -124,6 +168,7 @@ public partial class LiveControlView : UserControl
     private void OnOBSStreamingStateChanged(bool isLive)
     {
         _isLive = isLive;
+        LiveBadge.Visibility = isLive ? Visibility.Visible : Visibility.Collapsed;
         if (isLive)
             SetLiveUI();
         else
@@ -206,6 +251,10 @@ public partial class LiveControlView : UserControl
         _streamTimer.Stop();
         StreamTimerText.Visibility = Visibility.Collapsed;
         StreamTimerText.Text       = "";
+
+        // Clear silence warning — reset so it doesn't re-fire instantly on the next stream
+        _lastMicSignalTime           = DateTime.MinValue;
+        MicSilenceWarning.Visibility = Visibility.Collapsed;
 
         StreamEvents.RaiseStreamState(false);
     }
@@ -299,6 +348,121 @@ public partial class LiveControlView : UserControl
         CamButton.Foreground = _camOn
             ? (Brush)FindResource("SecondaryText")
             : (Brush)FindResource("DangerBrush");
+    }
+
+    // ── Audio level meters ────────────────────────────────────────────────────
+
+    private void OnAudioLevelsUpdated(Dictionary<string, float> levels)
+    {
+        if (levels.Count == 0) return;
+
+        // Desktop output meter — use detected name; fall back to loudest source
+        float desktopLevel = 0f;
+        if (!string.IsNullOrEmpty(_detectedOutputName))
+            levels.TryGetValue(_detectedOutputName, out desktopLevel);
+        else
+            foreach (var v in levels.Values) if (v > desktopLevel) desktopLevel = v;
+        UpdateMeter(DesktopMeterTrack, DesktopMeterFill, desktopLevel);
+
+        // Microphone meter + silence detection — use detected name; fall back to second source
+        float micLevel = 0f;
+        if (!string.IsNullOrEmpty(_detectedMicName))
+            levels.TryGetValue(_detectedMicName, out micLevel);
+        else
+        {
+            // No name yet — skip first key (likely desktop), use second if available
+            int idx = 0;
+            foreach (var kv in levels) { if (idx++ == 1) { micLevel = kv.Value; break; } }
+        }
+        UpdateMeter(MicMeterTrack, MicMeterFill, micLevel);
+
+        if (micLevel > 0.01f)
+            _lastMicSignalTime = DateTime.Now;
+
+        // Silence warning: only while streaming, mic is on, and a name is known
+        bool silentTooLong = _isLive
+            && _micOn
+            && !string.IsNullOrEmpty(_detectedMicName)
+            && _lastMicSignalTime != DateTime.MinValue
+            && (DateTime.Now - _lastMicSignalTime).TotalSeconds > 5;
+
+        MicSilenceWarning.Visibility = silentTooLong ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static void UpdateMeter(Border track, Border fill, float level)
+    {
+        var trackWidth = track.ActualWidth;
+        if (trackWidth <= 0) return;
+
+        fill.Width = Math.Clamp(level, 0f, 1f) * trackWidth;
+        fill.Background = level > 0.9f ? _meterRed
+                        : level > 0.6f ? _meterAmber
+                        : _meterGreen;
+    }
+
+    // ── Live Preview ─────────────────────────────────────────────────────────
+
+    private void ApplyPreviewProGate()
+    {
+        bool isPro = FeatureGate.Has("live-preview");
+        PreviewContent.Visibility  = isPro ? Visibility.Visible  : Visibility.Collapsed;
+        PreviewProGate.Visibility  = isPro ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private async void StartPreview_Click(object sender, RoutedEventArgs e)
+    {
+        if (_previewRunning)
+        {
+            StopPreviewInternal();
+            return;
+        }
+
+        PreviewBtn.IsEnabled      = false;
+        PreviewError.Visibility   = Visibility.Collapsed;
+
+        // Check actual OBS state first — IsVirtualCamActive only reflects calls
+        // made through this session; the user may have started virtual cam manually.
+        var alreadyRunning = await _obs.GetVirtualCamStatusAsync();
+        if (!alreadyRunning)
+        {
+            await _obs.StartVirtualCamAsync();
+            await System.Threading.Tasks.Task.Delay(1000);   // give OBS time to spin up
+        }
+
+        // Verify the Windows device is actually available
+        if (!await VirtualCameraService.Instance.FindOBSCameraAsync())
+        {
+            PreviewError.Visibility = Visibility.Visible;
+            PreviewBtn.IsEnabled    = true;
+            return;
+        }
+
+        _previewHandler = frame => PreviewImage.Source = frame;
+        bool started = await VirtualCameraService.Instance.StartCaptureAsync(_previewHandler);
+        if (!started)
+        {
+            _previewHandler         = null;
+            PreviewError.Visibility = Visibility.Visible;
+            PreviewBtn.IsEnabled    = true;
+            return;
+        }
+
+        _previewRunning      = true;
+        PreviewBtn.Content   = "⏹  Stop Preview";
+        PreviewBtn.IsEnabled = true;
+    }
+
+    private void StopPreviewInternal()
+    {
+        if (_previewHandler != null)
+        {
+            _ = VirtualCameraService.Instance.StopCaptureAsync(_previewHandler);
+            _previewHandler = null;
+        }
+        _previewRunning         = false;
+        PreviewImage.Source     = null;
+        PreviewBtn.Content      = "👁  Start Preview";
+        PreviewError.Visibility = Visibility.Collapsed;
     }
 
     // ── Settings navigation ──────────────────────────────────────────────────

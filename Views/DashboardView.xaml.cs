@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using StreamCommand.Services;
@@ -31,6 +32,9 @@ public partial class DashboardView : UserControl
 
     // Milestone thresholds — celebrated once per threshold, stored in AppSettings
     private static readonly int[] _milestones = { 100, 500, 1000, 5000, 10000, 15000 };
+
+    // Dashboard preview feed
+    private Action<BitmapSource>? _dashPreviewHandler;
 
     public DashboardView()
     {
@@ -60,6 +64,9 @@ public partial class DashboardView : UserControl
         // Start/stop live viewer polling when stream goes live or offline
         StreamEvents.StreamStateChanged += isLive =>
             Dispatcher.Invoke(() => OnStreamStateChanged(isLive));
+
+        // Re-evaluate preview Pro gate when entitlement changes
+        EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyDashPreviewProGate);
     }
 
     // ── Follower count + milestone check ─────────────────────────────────────
@@ -124,6 +131,10 @@ public partial class DashboardView : UserControl
             _viewerPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
             _viewerPollTimer.Tick += async (_, _) => await PollViewerCountAsync();
             _viewerPollTimer.Start();
+
+            // Show live preview card — Pro gate applied inside
+            DashPreviewCard.Visibility = Visibility.Visible;
+            ApplyDashPreviewProGate();
         }
         else
         {
@@ -131,6 +142,41 @@ public partial class DashboardView : UserControl
             _viewerPollTimer = null;
             _liveViewerHistory.Clear();
             DrawChart();   // revert to placeholder when offline
+
+            // Stop preview and collapse card
+            if (_dashPreviewHandler != null)
+            {
+                _ = VirtualCameraService.Instance.StopCaptureAsync(_dashPreviewHandler);
+                _dashPreviewHandler = null;
+            }
+            DashPreviewCard.Visibility    = Visibility.Collapsed;
+            DashPreviewImage.Source       = null;
+            DashPreviewViewerCount.Text   = "—";
+        }
+    }
+
+    private async void ApplyDashPreviewProGate()
+    {
+        bool isPro = FeatureGate.Has("live-preview");
+        DashPreviewContent.Visibility = isPro ? Visibility.Visible  : Visibility.Collapsed;
+        DashPreviewGate.Visibility    = isPro ? Visibility.Collapsed : Visibility.Visible;
+
+        if (isPro && _dashPreviewHandler == null)
+        {
+            // Start the feed (no-op if device already open from LiveControl)
+            _dashPreviewHandler = frame => DashPreviewImage.Source = frame;
+            bool started = await VirtualCameraService.Instance.StartCaptureAsync(_dashPreviewHandler);
+            if (!started)
+            {
+                // Virtual camera not found — silently hide the image area
+                _dashPreviewHandler = null;
+                DashPreviewContent.Visibility = Visibility.Collapsed;
+            }
+        }
+        else if (!isPro && _dashPreviewHandler != null)
+        {
+            await VirtualCameraService.Instance.StopCaptureAsync(_dashPreviewHandler);
+            _dashPreviewHandler = null;
         }
     }
 
@@ -149,7 +195,8 @@ public partial class DashboardView : UserControl
         {
             if (!stats.IsLive) return;
 
-            LiveViewersText.Text = stats.ViewerCount.ToString("N0");
+            LiveViewersText.Text        = stats.ViewerCount.ToString("N0");
+            DashPreviewViewerCount.Text = stats.ViewerCount.ToString("N0");
             _liveViewerHistory.Add(stats.ViewerCount);
             if (_liveViewerHistory.Count > 20)
                 _liveViewerHistory.RemoveAt(0);

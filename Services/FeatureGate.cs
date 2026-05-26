@@ -21,6 +21,7 @@ namespace StreamCommand.Services
         // Features available to free users (no subscription required)
         private static readonly HashSet<string> _freeFeatures = new(System.StringComparer.OrdinalIgnoreCase)
         {
+            "audio-meters",         // real-time OBS level meters — every streamer needs mic confirmation
             "dashboard",
             "live-control",
             "pre-stream",           // checklist view/read (edit is Pro)
@@ -41,6 +42,7 @@ namespace StreamCommand.Services
         {
             "analytics-history",        // 30-day chart history
             "automation-unlimited",     // more than 3 active rules
+            "live-preview",             // OBS Virtual Camera feed inside the app
             "planner-unlimited",        // more than 3 scheduled streams
             "pre-stream-edit",          // add/remove checklist items
             "quick-launch-unlimited",   // more than 5 saved apps

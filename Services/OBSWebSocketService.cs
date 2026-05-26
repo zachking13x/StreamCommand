@@ -33,10 +33,15 @@ public class OBSWebSocketService
     public bool     IsStreaming  { get; private set; }
     public string   StatusMessage{ get; private set; } = "OBS: Not connected";
 
-    public event Action<OBSState>?                   StateChanged;
-    public event Action<bool>?                       StreamingStateChanged;         // true = stream started
-    public event Action<string[]>?                   ScenesLoaded;                  // fires when scene list is fetched
-    public event Action<(string[] Mics, string[] Outputs)>? AudioInputsLoaded;     // fires after scene list
+    public event Action<OBSState>?                          StateChanged;
+    public event Action<bool>?                              StreamingStateChanged;      // true = stream started
+    public event Action<string[]>?                          ScenesLoaded;               // fires when scene list is fetched
+    public event Action<(string[] Mics, string[] Outputs)>? AudioInputsLoaded;          // fires after scene list
+    /// <summary>
+    /// Fired ~20×/second while OBS is connected.
+    /// Key = OBS input name, Value = peak level 0.0–1.0 (max across all channels).
+    /// </summary>
+    public event Action<Dictionary<string, float>>?         AudioLevelsUpdated;
 
     // ── Public API ──────────────────────────────────────────────────────────
 
@@ -74,9 +79,11 @@ public class OBSWebSocketService
             }
 
             // Step 3 — send Identify (op 1)
+            // eventSubscriptions: 2047 = All standard events; 65536 = InputVolumeMeters (high-volume, must opt in explicitly)
+            const int EventSubs = 2047 | 65536;
             object identData = string.IsNullOrEmpty(authString)
-                ? (object)new { rpcVersion = 1 }
-                : new { rpcVersion = 1, authentication = authString };
+                ? (object)new { rpcVersion = 1, eventSubscriptions = EventSubs }
+                : new { rpcVersion = 1, authentication = authString, eventSubscriptions = EventSubs };
 
             await SendAsync(new { op = 1, d = identData });
 
@@ -106,6 +113,8 @@ public class OBSWebSocketService
         }
     }
 
+    public bool IsVirtualCamActive { get; private set; }
+
     public async Task StartStreamAsync()
     {
         if (State != OBSState.Connected) return;
@@ -116,6 +125,29 @@ public class OBSWebSocketService
     {
         if (State != OBSState.Connected) return;
         await SendRequestAsync("StopStream");
+    }
+
+    public async Task StartVirtualCamAsync()
+    {
+        if (State != OBSState.Connected) return;
+        await SendRequestAsync("StartVirtualCam");
+        IsVirtualCamActive = true;
+    }
+
+    public async Task StopVirtualCamAsync()
+    {
+        if (State != OBSState.Connected) return;
+        await SendRequestAsync("StopVirtualCam");
+        IsVirtualCamActive = false;
+    }
+
+    /// <summary>Queries OBS for virtual camera state and updates <see cref="IsVirtualCamActive"/>.</summary>
+    public async Task<bool> GetVirtualCamStatusAsync()
+    {
+        var resp   = await SendRequestWithResponseAsync("GetVirtualCamStatus");
+        var active = resp?["d"]?["responseData"]?["outputActive"]?.GetValue<bool>() ?? false;
+        IsVirtualCamActive = active;
+        return active;
     }
 
     public async Task<string[]> GetScenesAsync()
@@ -215,6 +247,37 @@ public class OBSWebSocketService
                     {
                         // Re-fetch the scene list whenever it changes in OBS
                         _ = Task.Run(FetchScenesAsync);
+                    }
+                    else if (evType == "InputVolumeMeters")
+                    {
+                        // ~20 Hz push event — parse peak level for each input
+                        var inputs = msg["d"]?["eventData"]?["inputs"]?.AsArray();
+                        if (inputs is not null && AudioLevelsUpdated is not null)
+                        {
+                            var levels = new Dictionary<string, float>(
+                                inputs.Count, StringComparer.OrdinalIgnoreCase);
+
+                            foreach (var input in inputs)
+                            {
+                                var name     = input?["inputName"]?.GetValue<string>();
+                                var channels = input?["inputLevelsMul"]?.AsArray();
+                                if (name is null || channels is null) continue;
+
+                                float peak = 0f;
+                                foreach (var channel in channels)
+                                {
+                                    // Each channel array: [magnitude, peak, inputPeak]
+                                    var ch = channel?.AsArray();
+                                    if (ch is null || ch.Count < 2) continue;
+                                    var p = ch[1]?.GetValue<float>() ?? 0f;
+                                    if (p > peak) peak = p;
+                                }
+                                levels[name] = peak;
+                            }
+
+                            if (levels.Count > 0)
+                                AudioLevelsUpdated.Invoke(levels);
+                        }
                     }
                 }
                 else if (op == 7)   // RequestResponse — complete the pending awaiter

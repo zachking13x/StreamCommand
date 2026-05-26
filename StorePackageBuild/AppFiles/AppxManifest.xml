@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -8,13 +8,13 @@
   <Identity
     Name="590453723.StreamCommand"
     Publisher="CN=19367528-D63E-434A-8936-D6472D317EDC"
-    Version="1.0.14.0" />
+    Version="1.0.22.0" />
 
   <Properties>
     <DisplayName>StreamCommand</DisplayName>
     <PublisherDisplayName>590453723</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
-    <Description>Your all-in-one streaming dashboard â€” connect Twitch chat, control OBS Studio, manage your pre-stream checklist, plan your schedule, and go live with one click.</Description>
+    <Description>Your all-in-one streaming dashboard — connect Twitch chat, control OBS Studio, manage your pre-stream checklist, plan your schedule, and go live with one click.</Description>
   </Properties>
 
   <Dependencies>
@@ -52,6 +52,7 @@
   <Capabilities>
     <Capability Name="internetClient" />
     <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="webcam" />
   </Capabilities>
 
 </Package>
