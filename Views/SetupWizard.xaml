@@ -117,6 +117,36 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Device code panel — visible while polling for browser approval -->
+                <Border x:Name="DeviceCodePanel"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource AccentMuted}"
+                        BorderBrush="{DynamicResource AccentBorder}"
+                        BorderThickness="1" CornerRadius="10"
+                        Padding="16,14" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="A browser window just opened — enter this code at twitch.tv/activate:"
+                                   Foreground="{DynamicResource AccentLight}"
+                                   FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <Border Background="{DynamicResource CardBackground}"
+                                CornerRadius="8" Padding="14,10" Margin="0,0,0,10"
+                                HorizontalAlignment="Left">
+                            <TextBlock x:Name="DeviceCodeLabel"
+                                       FontSize="26" FontWeight="Bold" FontFamily="Consolas"
+                                       Foreground="{DynamicResource PrimaryText}"/>
+                        </Border>
+                        <TextBlock Text="⏳  Waiting for you to approve in the browser…"
+                                   Foreground="{DynamicResource MutedText}" FontSize="12"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="CancelTwitchBtn"
+                                Content="Cancel"
+                                Style="{StaticResource SecondaryButton}"
+                                HorizontalAlignment="Left"
+                                Padding="12,6" FontSize="12"
+                                Click="CancelTwitch_Click"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Connected state banner (hidden until auth succeeds) -->
                 <Border x:Name="TwitchConnectedBanner"
                         Visibility="Collapsed"

@@ -22,6 +22,9 @@ namespace StreamCommand.Services
         /// </summary>
         public static event Action? Refreshed;
 
+        /// <summary>Raises <see cref="Refreshed"/> from outside the class.</summary>
+        public static void RaiseRefreshed() => Refreshed?.Invoke();
+
         // Lazy + guarded: GetDefault() throws COMException when the app is not in a
         // packaged/Store context (e.g. sideloaded during development).  We catch that
         // here so the static initializer never faults the whole class.
@@ -35,15 +38,27 @@ namespace StreamCommand.Services
             return _context;
         }
 
+        // Keys used by StoreAppLicense.AddOnLicenses — these are the Store IDs from
+        // Partner Center (9Nxxx), NOT the InAppOfferToken strings.
         private static readonly string[] ProductIds =
         {
-            "pro_monthly",
-            "pro_annual",
-            "pro_lifetime"
+            "9P278M24CMND",   // pro_monthly
+            "9ND71MP15Q0C",   // pro_annual
+            "9N5XMTJ071XR",   // pro_lifetime
         };
 
         public static async Task RefreshAsync()
         {
+            // Developer / beta unlock — checked before any Store call so it works
+            // in both packaged and unpackaged contexts without touching the Store.
+            if (SettingsService.Load().DevProUnlock)
+            {
+                IsPro           = true;
+                ActiveProductId = "dev_unlock";
+                Refreshed?.Invoke();
+                return;
+            }
+
             try
             {
                 var ctx = EnsureContext();

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -13,7 +14,8 @@ public partial class SetupWizard : Window
     private readonly OBSWebSocketService _obsTest = new();
 
     // Holds the result of a successful OAuth flow so it can be persisted at Finish
-    private TwitchOAuthResult? _twitchAuth;
+    private TwitchOAuthResult?          _twitchAuth;
+    private CancellationTokenSource?    _twitchCts;
 
     // M7: track whether OBS test passed so SaveAndBuildSummary can reflect it accurately
     private bool _obsTestPassed;
@@ -211,17 +213,32 @@ public partial class SetupWizard : Window
     private async void ConnectTwitch_Click(object sender, RoutedEventArgs e)
     {
         ConnectTwitchBtn.IsEnabled = false;
-        ConnectTwitchBtn.Content   = "Waiting for Twitch…";
+        DeviceCodePanel.Visibility = Visibility.Collapsed;
+        ConnectTwitchBtn.Content   = "Starting…";
+
+        _twitchCts?.Cancel();
+        _twitchCts = new CancellationTokenSource();
 
         try
         {
-            var result = await TwitchOAuthService.AuthorizeAsync();
+            var result = await TwitchOAuthService.AuthorizeAsync(
+                onCodeReady: (userCode, _) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        DeviceCodeLabel.Text       = userCode;
+                        DeviceCodePanel.Visibility = Visibility.Visible;
+                        ConnectTwitchBtn.Content   = "Connect with Twitch";
+                    });
+                },
+                cancellationToken: _twitchCts.Token);
+
+            DeviceCodePanel.Visibility = Visibility.Collapsed;
 
             if (result != null)
             {
                 _twitchAuth = result;
 
-                // Persist immediately so the rest of the wizard can read it
                 var s = SettingsService.Load();
                 s.TwitchUsername     = result.Username;
                 s.TwitchChatToken    = result.AccessToken;
@@ -236,18 +253,26 @@ public partial class SetupWizard : Window
             else
             {
                 var failure = TwitchOAuthService.LastFailure;
-                ConnectTwitchBtn.Content = failure != null
-                    ? $"Failed ({failure.Step}) — try again"
-                    : "Connection failed — try again";
+                ConnectTwitchBtn.Content = (failure?.Step == "Cancelled")
+                    ? "Connect with Twitch"
+                    : $"Failed: {failure?.Step ?? "Unknown"} — try again";
             }
         }
         catch (Exception ex)
         {
-            ConnectTwitchBtn.Content = $"Error: {ex.Message[..Math.Min(60, ex.Message.Length)]}";
+            DeviceCodePanel.Visibility = Visibility.Collapsed;
+            ConnectTwitchBtn.Content   = $"Error — try again ({ex.Message[..Math.Min(40, ex.Message.Length)]})";
         }
         finally
         {
             ConnectTwitchBtn.IsEnabled = true;
         }
+    }
+
+    private void CancelTwitch_Click(object sender, RoutedEventArgs e)
+    {
+        _twitchCts?.Cancel();
+        DeviceCodePanel.Visibility = Visibility.Collapsed;
+        ConnectTwitchBtn.Content   = "Connect with Twitch";
     }
 }

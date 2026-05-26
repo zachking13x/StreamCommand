@@ -95,6 +95,13 @@ public class AppSettings
     /// <summary>Hex of the user's chosen accent colour (e.g. "#6B9E85").</summary>
     public string AccentColor { get; set; } = "#6B9E85";
 
+    /// <summary>
+    /// Developer / beta-tester Pro unlock. When true, bypasses the Microsoft Store
+    /// entitlement check and grants full Pro access on this machine.
+    /// Set via the unlock code field in Settings → About.
+    /// </summary>
+    public bool DevProUnlock { get; set; } = false;
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
@@ -182,6 +189,7 @@ public static class SettingsService
             CustomQuickLaunchItems  = settings.CustomQuickLaunchItems,
             GrowthGoals             = settings.GrowthGoals,
             AccentColor             = settings.AccentColor,
+            DevProUnlock            = settings.DevProUnlock,
 
             TwitchChatToken      = CredentialProtection.Protect(settings.TwitchChatToken),
             TwitchRefreshToken   = CredentialProtection.Protect(settings.TwitchRefreshToken),

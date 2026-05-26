@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,6 +12,7 @@ namespace StreamCommand.Views;
 public partial class SettingsView : UserControl
 {
     private AppSettings _settings;
+    private CancellationTokenSource? _twitchCts;
 
     public SettingsView()
     {
@@ -28,6 +30,9 @@ public partial class SettingsView : UserControl
 
         // Highlight whichever swatch matches the saved accent colour
         UpdateSwatchRing(_settings.AccentColor);
+
+        // Pro status banner
+        UpdateProStatus();
 
         // PasswordBoxes can't display existing values — show a saved-indicator instead
         // so users know the field is already populated and they only need to type if changing it.
@@ -86,17 +91,35 @@ public partial class SettingsView : UserControl
         SaveBtn.Content = "💾  Save Settings";
     }
 
-    // ── Twitch OAuth ─────────────────────────────────────────────────────────
+    // ── Twitch OAuth (Device Code flow) ──────────────────────────────────────
 
     private async void ConnectTwitch_Click(object sender, RoutedEventArgs e)
     {
-        ConnectTwitchBtn.IsEnabled    = false;
-        TwitchErrorBanner.Visibility  = Visibility.Collapsed;
-        ConnectTwitchBtn.Content      = "Waiting for Twitch…";
+        // Reset UI
+        ConnectTwitchBtn.IsEnabled   = false;
+        TwitchErrorBanner.Visibility = Visibility.Collapsed;
+        DeviceCodePanel.Visibility   = Visibility.Collapsed;
+        ConnectTwitchBtn.Content     = "Starting…";
+
+        _twitchCts?.Cancel();
+        _twitchCts = new CancellationTokenSource();
 
         try
         {
-            var result = await TwitchOAuthService.AuthorizeAsync();
+            var result = await TwitchOAuthService.AuthorizeAsync(
+                onCodeReady: (userCode, verificationUri) =>
+                {
+                    // Fires on the thread-pool — marshal back to UI thread
+                    Dispatcher.Invoke(() =>
+                    {
+                        DeviceCodeLabel.Text       = userCode;
+                        DeviceCodePanel.Visibility = Visibility.Visible;
+                        ConnectTwitchBtn.Content   = BuildConnectBtnContent("Connect with Twitch");
+                    });
+                },
+                cancellationToken: _twitchCts.Token);
+
+            DeviceCodePanel.Visibility = Visibility.Collapsed;
 
             if (result != null)
             {
@@ -120,9 +143,8 @@ public partial class SettingsView : UserControl
             {
                 ConnectTwitchBtn.Content = BuildConnectBtnContent("Try again");
 
-                // Show exactly why it failed so the user (or we) can diagnose it
                 var failure = TwitchOAuthService.LastFailure;
-                if (failure != null)
+                if (failure != null && failure.Step != "Cancelled")
                 {
                     TwitchErrorStep.Text         = $"⚠  Failed at: {failure.Step}";
                     TwitchErrorDetail.Text       = failure.Detail;
@@ -132,7 +154,8 @@ public partial class SettingsView : UserControl
         }
         catch (Exception ex)
         {
-            ConnectTwitchBtn.Content = BuildConnectBtnContent("Try again");
+            DeviceCodePanel.Visibility   = Visibility.Collapsed;
+            ConnectTwitchBtn.Content     = BuildConnectBtnContent("Try again");
             TwitchErrorStep.Text         = "⚠  Unexpected error";
             TwitchErrorDetail.Text       = ex.Message;
             TwitchErrorBanner.Visibility = Visibility.Visible;
@@ -141,6 +164,13 @@ public partial class SettingsView : UserControl
         {
             ConnectTwitchBtn.IsEnabled = true;
         }
+    }
+
+    private void CancelTwitch_Click(object sender, RoutedEventArgs e)
+    {
+        _twitchCts?.Cancel();
+        DeviceCodePanel.Visibility = Visibility.Collapsed;
+        ConnectTwitchBtn.Content   = BuildConnectBtnContent("Connect with Twitch");
     }
 
     // ── Accent colour picker ─────────────────────────────────────────────────
@@ -168,6 +198,69 @@ public partial class SettingsView : UserControl
             var selected = tag == activeHex;
             swatch.BorderBrush     = selected ? Brushes.White : Brushes.Transparent;
             swatch.BorderThickness = selected ? new Thickness(2) : new Thickness(0);
+        }
+    }
+
+    // ── Pro status + unlock code ─────────────────────────────────────────────
+
+    private void UpdateProStatus()
+    {
+        bool isPro = EntitlementService.IsPro || _settings.DevProUnlock;
+
+        if (isPro)
+        {
+            ProStatusText.Text            = "✦  Pro — all features unlocked";
+            ProStatusText.Foreground      = (System.Windows.Media.Brush)FindResource("AccentLight");
+            ProStatusBanner.Background    = (System.Windows.Media.Brush)FindResource("AccentMuted");
+            ProStatusBanner.BorderBrush   = (System.Windows.Media.Brush)FindResource("AccentBorder");
+            ProStatusBanner.BorderThickness = new Thickness(1);
+            // Hide unlock panel — already activated
+            UnlockPanel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ProStatusText.Text            = "○  Free tier";
+            ProStatusText.Foreground      = (System.Windows.Media.Brush)FindResource("MutedText");
+            ProStatusBanner.Background    = (System.Windows.Media.Brush)FindResource("CardBackground");
+            ProStatusBanner.BorderBrush   = (System.Windows.Media.Brush)FindResource("BorderBrush");
+            ProStatusBanner.BorderThickness = new Thickness(1);
+            UnlockPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ActivateCode_Click(object sender, RoutedEventArgs e)
+    {
+        var code = UnlockCodeBox.Text.Trim();
+
+        // SHA-256 of "STREAM-590453723"
+        const string ValidHash = "B0F5F3ABC9CFD9DB3F90C83DA89EEAAEE560C2E0D92511AE77DCD6DB6A278C05";
+
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var hash = BitConverter.ToString(
+            sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(code)))
+            .Replace("-", "").ToUpperInvariant();
+
+        if (hash == ValidHash)
+        {
+            _settings.DevProUnlock = true;
+            SettingsService.Save(_settings);
+
+            // Immediately grant Pro without waiting for next app launch
+            EntitlementService.IsPro           = true;
+            EntitlementService.ActiveProductId = "dev_unlock";
+            EntitlementService.RaiseRefreshed();      // let views re-evaluate gates
+
+            UnlockCodeBox.Text            = "";
+            UnlockResultText.Text         = "✓  Pro unlocked on this device.";
+            UnlockResultText.Foreground   = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+            UnlockResultText.Visibility   = Visibility.Visible;
+            UpdateProStatus();
+        }
+        else
+        {
+            UnlockResultText.Text         = "✗  Invalid code.";
+            UnlockResultText.Foreground   = (System.Windows.Media.Brush)FindResource("DangerBrush");
+            UnlockResultText.Visibility   = Visibility.Visible;
         }
     }
 

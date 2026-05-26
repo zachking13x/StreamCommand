@@ -213,8 +213,7 @@
                                     HorizontalAlignment="Left">
                                 <TextBlock x:Name="DeviceCodeLabel"
                                            FontSize="26" FontWeight="Bold" FontFamily="Consolas"
-                                           Foreground="{DynamicResource PrimaryText}"
-                                           LetterSpacing="4"/>
+                                           Foreground="{DynamicResource PrimaryText}"/>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <TextBlock Text="⏳  Waiting for you to approve…"
@@ -309,9 +308,40 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="About" Style="{StaticResource SectionHeader}" Margin="0,0,0,8"/>
-                    <TextBlock Text="Stream Command  v1.0.9" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
+                    <TextBlock Text="Stream Command  v1.0.11" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
                     <TextBlock Text="All-in-one streaming companion — built for streamers, by a streamer."
-                               Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                               Style="{StaticResource Muted}" Margin="0,3,0,14"/>
+
+                    <!-- Pro status indicator -->
+                    <Border x:Name="ProStatusBanner" CornerRadius="6" Padding="10,7" Margin="0,0,0,12"
+                            HorizontalAlignment="Left">
+                        <TextBlock x:Name="ProStatusText" FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+
+                    <!-- Unlock code entry — for developer / beta testers -->
+                    <StackPanel x:Name="UnlockPanel">
+                        <TextBlock Text="UNLOCK CODE" Style="{StaticResource Label}" Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="UnlockCodeBox"
+                                     Grid.Column="0"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Tag="Enter code…"
+                                     MaxLength="40"/>
+                            <Button Grid.Column="2"
+                                    Content="Activate"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Padding="14,7" FontSize="12"
+                                    Click="ActivateCode_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="UnlockResultText"
+                                   FontSize="11" Margin="0,5,0,0"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
