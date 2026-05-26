@@ -41,8 +41,23 @@ public partial class AnalyticsView : UserControl
     private void ApplyProGate()
     {
         bool isPro = FeatureGate.Has("analytics-history");
-        ProChartsGate.Visibility = isPro ? Visibility.Collapsed : Visibility.Visible;
-        ChartsContent.Effect     = isPro ? null : new BlurEffect { Radius = 10, KernelType = KernelType.Gaussian };
+
+        if (isPro)
+        {
+            // Pro users see a "coming soon" notice — never fabricated sample data
+            ProChartsGate.Visibility  = Visibility.Collapsed;
+            ComingSoonPanel.Visibility = Visibility.Visible;
+            ChartsContent.Visibility  = Visibility.Collapsed;
+            ChartsContent.Effect      = null;
+        }
+        else
+        {
+            // Free users see the upgrade prompt
+            ProChartsGate.Visibility  = Visibility.Visible;
+            ComingSoonPanel.Visibility = Visibility.Collapsed;
+            ChartsContent.Visibility  = Visibility.Collapsed;
+            ChartsContent.Effect      = null;
+        }
     }
 
     private async System.Threading.Tasks.Task LoadLiveDataAsync()

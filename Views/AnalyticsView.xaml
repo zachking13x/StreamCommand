@@ -65,46 +65,24 @@
                 </Border>
             </Grid>
 
-            <!-- Charts section — locked for free users -->
+            <!-- Charts section — locked for free users / coming soon for Pro -->
             <Grid>
-                <!-- Chart content (blurred when not Pro) -->
-                <StackPanel x:Name="ChartsContent">
+                <!-- Chart content — kept in the tree so Canvas drawing code compiles,
+                     but always Collapsed. Shown to nobody until real API history exists. -->
+                <StackPanel x:Name="ChartsContent" Visibility="Collapsed">
 
                     <!-- Follower Growth Chart -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                         <StackPanel>
-                            <Grid Margin="0,0,0,12">
-                                <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}"
-                                           VerticalAlignment="Center"/>
-                                <Border HorizontalAlignment="Right" VerticalAlignment="Center"
-                                        Background="{DynamicResource CardBackground}"
-                                        BorderBrush="{DynamicResource BorderBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="6,2">
-                                    <TextBlock Text="Sample data" Foreground="{DynamicResource MutedText}"
-                                               FontSize="10" FontStyle="Italic"/>
-                                </Border>
-                            </Grid>
+                            <TextBlock Text="Follower Growth" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
                             <Canvas x:Name="FollowerChart" Height="160"
                                     ClipToBounds="True"
                                     Loaded="FollowerChart_Loaded"
                                     SizeChanged="FollowerChart_SizeChanged"/>
-                            <Grid Margin="0,6,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Apr 1"  Style="{StaticResource Muted}" HorizontalAlignment="Left"/>
-                                <TextBlock Grid.Column="1" Text="Apr 8"  Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="Apr 15" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="3" Text="Apr 22" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="4" Text="Apr 29" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="5" Text="May 6"  Style="{StaticResource Muted}" HorizontalAlignment="Right"/>
-                            </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- Avg vs Peak Viewers Bar Chart -->
+                    <!-- Avg vs Peak Viewers / Hours Bar Charts -->
                     <Grid Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -130,6 +108,24 @@
                     </Grid>
 
                 </StackPanel>
+
+                <!-- Coming Soon — shown to Pro subscribers instead of fake sample data -->
+                <Border x:Name="ComingSoonPanel" Visibility="Collapsed"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource AccentBorder}"
+                        BorderThickness="1" CornerRadius="10" Padding="40,48">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="📊" FontSize="40" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                        <TextBlock Text="Historical analytics — coming soon"
+                                   FontSize="17" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="30-day follower growth, peak viewer history, and stream-hours charts are in development and will appear here in a future update. Live stats above are real-time."
+                                   FontSize="12" Foreground="{DynamicResource MutedText}"
+                                   HorizontalAlignment="Center" TextWrapping="Wrap"
+                                   TextAlignment="Center" MaxWidth="420"/>
+                    </StackPanel>
+                </Border>
 
                 <!-- Pro upgrade overlay — visible for free users -->
                 <Border x:Name="ProChartsGate" Visibility="Collapsed"

@@ -87,13 +87,18 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Start EventSub for follow events
+            // Start EventSub for follow events.
+            // Fall back to the embedded client ID if the stored one is missing —
+            // this covers users who set up on a very old version before it was saved.
+            var eventSubClientId = !string.IsNullOrWhiteSpace(s.TwitchClientId)
+                ? s.TwitchClientId
+                : TwitchOAuthService.ClientId;
+
             if (!string.IsNullOrWhiteSpace(s.TwitchUsername) &&
-                !string.IsNullOrWhiteSpace(s.TwitchClientId)  &&
                 !string.IsNullOrWhiteSpace(s.TwitchChatToken))
             {
                 await EventSubService.Instance.ConnectAsync(
-                    s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
+                    s.TwitchUsername, eventSubClientId, s.TwitchChatToken);
             }
 
             // Load persisted reminder keys (now uses stable PlannerEvent.Id)

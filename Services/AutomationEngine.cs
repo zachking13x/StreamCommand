@@ -91,7 +91,7 @@ public sealed class AutomationEngine
                 break;   // only the first matching rule fires per event
             }
         }
-        catch { /* Swallow — automation errors must never propagate to the UI thread */ }
+        catch (Exception ex) when (LogAndSuppress(ex, nameof(OnMessage))) { }
     }
 
     // ── EventSub follow handler ───────────────────────────────────────────────
@@ -127,7 +127,22 @@ public sealed class AutomationEngine
                 break;
             }
         }
-        catch { /* Swallow — automation errors must never propagate to the UI thread */ }
+        catch (Exception ex) when (LogAndSuppress(ex, nameof(OnFollowReceived))) { }
+    }
+
+    // ── Exception logger (debug) / suppressor (release) ──────────────────────
+
+    /// <summary>
+    /// Always returns true so the catch block runs (exception is suppressed).
+    /// In DEBUG builds it also writes the exception to the debug output so it
+    /// isn't silently swallowed during development.
+    /// </summary>
+    private static bool LogAndSuppress(Exception ex, string source)
+    {
+#if DEBUG
+        System.Diagnostics.Debug.WriteLine($"[AutomationEngine.{source}] {ex}");
+#endif
+        return true;   // suppress — automation errors must never propagate to the UI thread
     }
 
     // ── Cooldown guard ────────────────────────────────────────────────────────
