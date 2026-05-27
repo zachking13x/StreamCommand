@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "StreamCommand/1.0.23": {
+      "StreamCommand/1.0.24": {
         "dependencies": {
           "AForge.Video.DirectShow": "2.2.5",
           "System.Drawing.Common": "9.0.0",
@@ -94,7 +94,7 @@
     }
   },
   "libraries": {
-    "StreamCommand/1.0.23": {
+    "StreamCommand/1.0.24": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -84,6 +84,17 @@ public sealed class VirtualCameraService
             }
 
             _device = new VideoCaptureDevice(camera.MonikerString);
+
+            // Set explicit capture format — without this AForge may negotiate
+            // a format OBS Virtual Camera doesn't deliver frames on
+            var videoCapabilities = _device.VideoCapabilities;
+            if (videoCapabilities != null && videoCapabilities.Length > 0)
+            {
+                // Pick the highest resolution available — OBS Virtual Camera
+                // lists its stream resolution as the first/only capability
+                _device.VideoResolution = videoCapabilities[0];
+            }
+
             _device.NewFrame += OnNewFrame;
             _device.Start();
             IsCapturing = true;
