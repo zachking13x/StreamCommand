@@ -420,23 +420,15 @@ public partial class LiveControlView : UserControl
         PreviewBtn.IsEnabled      = false;
         PreviewError.Visibility   = Visibility.Collapsed;
 
-        // Check actual OBS state first — IsVirtualCamActive only reflects calls
-        // made through this session; the user may have started virtual cam manually.
+        // Ensure OBS Virtual Camera is running before we try to capture from it
         var alreadyRunning = await _obs.GetVirtualCamStatusAsync();
         if (!alreadyRunning)
         {
             await _obs.StartVirtualCamAsync();
-            await System.Threading.Tasks.Task.Delay(1000);   // give OBS time to spin up
+            await System.Threading.Tasks.Task.Delay(1000);   // give OBS time to spin up the DirectShow device
         }
 
-        // Verify the Windows device is actually available
-        if (!await VirtualCameraService.Instance.FindOBSCameraAsync())
-        {
-            PreviewError.Visibility = Visibility.Visible;
-            PreviewBtn.IsEnabled    = true;
-            return;
-        }
-
+        // Start capture — returns false if OBS Virtual Camera device isn't found
         _previewHandler = frame => PreviewImage.Source = frame;
         bool started = await VirtualCameraService.Instance.StartCaptureAsync(_previewHandler);
         if (!started)
