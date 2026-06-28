@@ -45,6 +45,7 @@ public partial class DashboardView : UserControl
         {
             BuildUpcomingList();
             await RefreshFollowerCountAsync();
+            EvaluateConversionCard();
         };
 
         BuildQuickLaunch();
@@ -67,6 +68,33 @@ public partial class DashboardView : UserControl
 
         // Re-evaluate preview Pro gate when entitlement changes
         EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyDashPreviewProGate);
+
+        // Conversion card — evaluate every time a usage counter updates
+        StreamEvents.UsageUpdated += () => Dispatcher.Invoke(EvaluateConversionCard);
+    }
+
+    // ── Conversion card ───────────────────────────────────────────────────────
+
+    private bool _conversionCardShown = false;
+
+    private void EvaluateConversionCard()
+    {
+        if (_conversionCardShown) return;
+        if (EntitlementService.IsPro) return;
+
+        var s = SettingsService.Load();
+        if (s.StreamValueCardDismissed) return;
+        if (s.StreamsCompleted < 3) return;
+
+        _conversionCardShown = true;
+        var card = new StreamValueSummaryCard();
+        card.Dismissed += () =>
+        {
+            ConversionCardHost.Children.Clear();
+            _conversionCardShown = false;
+        };
+        ConversionCardHost.Children.Clear();
+        ConversionCardHost.Children.Add(card);
     }
 
     // ── Follower count + milestone check ─────────────────────────────────────

@@ -5,7 +5,10 @@
              Background="{DynamicResource AppBackground}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20" MaxWidth="1100">
+        <StackPanel x:Name="DashboardStack" Margin="20" MaxWidth="1100">
+
+            <!-- Conversion card host — injected from code when StreamsCompleted >= 3 -->
+            <StackPanel x:Name="ConversionCardHost"/>
 
             <!-- Ready to Stream Banner -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,14">

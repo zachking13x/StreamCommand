@@ -102,6 +102,23 @@ public class AppSettings
     /// </summary>
     public bool DevProUnlock { get; set; } = false;
 
+    // ── Usage telemetry — conversion moment + re-engagement ──────────────────
+    public int       OBSSessionsCompleted     { get; set; } = 0;
+    public int       StreamsCompleted         { get; set; } = 0;
+    public int       AutomationFiredCount     { get; set; } = 0;
+    public int       ProGateHitCount          { get; set; } = 0;
+    public DateTime? FirstLaunchDate          { get; set; } = null;
+    public DateTime? LastStreamDate           { get; set; } = null;
+
+    // ── Setup funnel tracking ─────────────────────────────────────────────────
+    public bool      OBSEverConnected         { get; set; } = false;
+    public bool      TwitchEverConnected      { get; set; } = false;
+
+    // ── Conversion + re-engagement UI state ───────────────────────────────────
+    public bool      StreamValueCardDismissed { get; set; } = false;
+    public DateTime? LastReEngagementToast    { get; set; } = null;
+    public bool      SetupNudgeSent           { get; set; } = false;
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
@@ -190,6 +207,18 @@ public static class SettingsService
             GrowthGoals             = settings.GrowthGoals,
             AccentColor             = settings.AccentColor,
             DevProUnlock            = settings.DevProUnlock,
+
+            OBSSessionsCompleted     = settings.OBSSessionsCompleted,
+            StreamsCompleted         = settings.StreamsCompleted,
+            AutomationFiredCount     = settings.AutomationFiredCount,
+            ProGateHitCount          = settings.ProGateHitCount,
+            FirstLaunchDate          = settings.FirstLaunchDate,
+            LastStreamDate           = settings.LastStreamDate,
+            OBSEverConnected         = settings.OBSEverConnected,
+            TwitchEverConnected      = settings.TwitchEverConnected,
+            StreamValueCardDismissed = settings.StreamValueCardDismissed,
+            LastReEngagementToast    = settings.LastReEngagementToast,
+            SetupNudgeSent           = settings.SetupNudgeSent,
 
             TwitchChatToken      = CredentialProtection.Protect(settings.TwitchChatToken),
             TwitchRefreshToken   = CredentialProtection.Protect(settings.TwitchRefreshToken),

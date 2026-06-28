@@ -86,7 +86,13 @@ public sealed class AutomationEngine
 
                 var response = ExpandTemplate(rule.ResponseTemplate, msg);
                 if (!string.IsNullOrWhiteSpace(response))
+                {
                     await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+                    var s = SettingsService.Load();
+                    s.AutomationFiredCount++;
+                    SettingsService.Save(s);
+                    StreamEvents.RaiseUsageUpdated();
+                }
 
                 break;   // only the first matching rule fires per event
             }
@@ -122,7 +128,13 @@ public sealed class AutomationEngine
 
                 var response = ExpandTemplate(rule.ResponseTemplate, followMsg);
                 if (!string.IsNullOrWhiteSpace(response))
+                {
                     await TwitchChatService.Shared.SendMessageAsync(_channel, response);
+                    var s = SettingsService.Load();
+                    s.AutomationFiredCount++;
+                    SettingsService.Save(s);
+                    StreamEvents.RaiseUsageUpdated();
+                }
 
                 break;
             }

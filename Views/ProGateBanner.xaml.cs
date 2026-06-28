@@ -22,11 +22,26 @@ public partial class ProGateBanner : UserControl
     public ProGateBanner()
     {
         InitializeComponent();
+
+        Loaded += (_, _) =>
+        {
+            var s = Services.SettingsService.Load();
+            s.ProGateHitCount++;
+            Services.SettingsService.Save(s);
+            Services.StreamEvents.RaiseUsageUpdated();
+        };
     }
 
     private void Banner_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+        var s = Services.SettingsService.Load();
+        var ctx = new UsageContext
+        {
+            StreamsCompleted     = s.StreamsCompleted,
+            AutomationFiredCount = s.AutomationFiredCount,
+            ProGateHitCount      = s.ProGateHitCount,
+        };
+        var win = new ProUpgradeWindow(ctx) { Owner = Window.GetWindow(this) };
         win.ShowDialog();
     }
 }

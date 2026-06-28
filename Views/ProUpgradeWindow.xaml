@@ -24,6 +24,12 @@
                            TextAlignment="Center" Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap"/>
             </StackPanel>
 
+            <!-- Dynamic headline — personalized based on usage -->
+            <TextBlock x:Name="DynamicHeadline"
+                       TextAlignment="Center" Foreground="{DynamicResource AccentLight}"
+                       FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"
+                       Margin="0,0,0,20"/>
+
             <!-- Pricing cards -->
             <Grid Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>

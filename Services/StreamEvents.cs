@@ -21,9 +21,16 @@ public static class StreamEvents
     /// <summary>Fired whenever Planner events are saved — Dashboard subscribes to refresh its upcoming list.</summary>
     public static event Action? PlannerChanged;
 
+    /// <summary>
+    /// Fired whenever a usage counter changes (streams, OBS sessions, automation, Pro gate hits).
+    /// DashboardView subscribes to this to evaluate the conversion card trigger.
+    /// </summary>
+    public static event Action? UsageUpdated;
+
     public static void RaiseStreamState(bool isLive) => StreamStateChanged?.Invoke(isLive);
     public static void RaiseAlert(string emoji, string message) => AlertFired?.Invoke(emoji, message);
     public static void RaiseOBSState(bool isConnected) => OBSStateChanged?.Invoke(isConnected);
     public static void RaiseChecklistProgress(int done, int total) => ChecklistProgressChanged?.Invoke(done, total);
     public static void RaisePlannerChanged() => PlannerChanged?.Invoke();
+    public static void RaiseUsageUpdated() => UsageUpdated?.Invoke();
 }

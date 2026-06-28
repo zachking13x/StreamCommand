@@ -29,6 +29,9 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _reminderTimer;
     private readonly HashSet<string> _notifiedEventKeys = new();
 
+    // Track prior OBS streaming state to detect true→false transitions
+    private bool _wasStreaming = false;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -66,10 +69,44 @@ public partial class MainWindow : Window
         // ── T1: Start AutomationEngine with persisted rules ────────────────────
         AutomationEngine.Instance.ReloadFromSettings();
 
+        // ── Usage counters — OBS sessions ─────────────────────────────────────
+        OBSWebSocketService.Shared.StateChanged += state =>
+        {
+            if (state == OBSState.Connected)
+            {
+                var s = SettingsService.Load();
+                s.OBSSessionsCompleted++;
+                if (!s.OBSEverConnected) s.OBSEverConnected = true;
+                SettingsService.Save(s);
+                StreamEvents.RaiseUsageUpdated();
+            }
+        };
+
+        // ── Usage counters — streams completed ────────────────────────────────
+        OBSWebSocketService.Shared.StreamingStateChanged += isStreaming =>
+        {
+            if (_wasStreaming && !isStreaming)
+            {
+                var s = SettingsService.Load();
+                s.StreamsCompleted++;
+                s.LastStreamDate = DateTime.Now;
+                SettingsService.Save(s);
+                StreamEvents.RaiseUsageUpdated();
+            }
+            _wasStreaming = isStreaming;
+        };
+
         // ── Startup async work ────────────────────────────────────────────────
         Loaded += async (_, _) =>
         {
             var s = SettingsService.Load();
+
+            // ── First launch date ─────────────────────────────────────────────
+            if (s.FirstLaunchDate == null)
+            {
+                s.FirstLaunchDate = DateTime.Now;
+                SettingsService.Save(s);
+            }
 
             // Validate OAuth token — silently refresh if expired
             if (!string.IsNullOrWhiteSpace(s.TwitchChatToken))
@@ -99,6 +136,28 @@ public partial class MainWindow : Window
             {
                 await EventSubService.Instance.ConnectAsync(
                     s.TwitchUsername, eventSubClientId, s.TwitchChatToken);
+
+                // Mark Twitch as ever connected on successful attempt
+                s = SettingsService.Load();
+                if (!s.TwitchEverConnected)
+                {
+                    s.TwitchEverConnected = true;
+                    SettingsService.Save(s);
+                }
+            }
+
+            // ── Setup nudge — fires once if OBS never connected after 1 day ──
+            s = SettingsService.Load();
+            if (!s.OBSEverConnected
+                && !s.SetupNudgeSent
+                && s.FirstLaunchDate.HasValue
+                && (DateTime.Now - s.FirstLaunchDate.Value).TotalDays >= 1)
+            {
+                s.SetupNudgeSent = true;
+                SettingsService.Save(s);
+                ShowToast(
+                    "StreamCommand is ready",
+                    "Connect OBS to take control of your stream — it only takes 30 seconds.");
             }
 
             // Load persisted reminder keys (now uses stable PlannerEvent.Id)
@@ -107,6 +166,7 @@ public partial class MainWindow : Window
 
             // Check immediately — timer handles the recurring 30-minute checks
             CheckPreStreamReminders();
+            CheckReEngagementReminders();
         };
 
         NavList.SelectedIndex = 0;
@@ -121,7 +181,7 @@ public partial class MainWindow : Window
 
         // Pre-stream reminder timer — fires every 30 minutes
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
-        _reminderTimer.Tick += (_, _) => CheckPreStreamReminders();
+        _reminderTimer.Tick += (_, _) => { CheckPreStreamReminders(); CheckReEngagementReminders(); };
         _reminderTimer.Start();
     }
 
@@ -146,7 +206,14 @@ public partial class MainWindow : Window
 
     private void UpgradePro_Click(object sender, MouseButtonEventArgs e)
     {
-        var win = new ProUpgradeWindow { Owner = this };
+        var s   = SettingsService.Load();
+        var ctx = new UsageContext
+        {
+            StreamsCompleted     = s.StreamsCompleted,
+            AutomationFiredCount = s.AutomationFiredCount,
+            ProGateHitCount      = s.ProGateHitCount,
+        };
+        var win = new ProUpgradeWindow(ctx) { Owner = this };
         win.ShowDialog();
     }
 
@@ -180,6 +247,26 @@ public partial class MainWindow : Window
             if (saved) SettingsService.Save(s);
         }
         catch { /* Never crash the UI thread from timer */ }
+    }
+
+    private void CheckReEngagementReminders()
+    {
+        try
+        {
+            var s = SettingsService.Load();
+            if (EntitlementService.IsPro) return;
+            if (s.LastStreamDate == null) return;
+            if ((DateTime.Now - s.LastStreamDate.Value).TotalDays < 7) return;
+            if (s.LastReEngagementToast.HasValue &&
+                (DateTime.Now - s.LastReEngagementToast.Value).TotalDays < 7) return;
+
+            s.LastReEngagementToast = DateTime.Now;
+            SettingsService.Save(s);
+            ShowToast(
+                "Ready to stream?",
+                "StreamCommand is standing by — your checklist and automation are set up and ready.");
+        }
+        catch { }
     }
 
     private static void ShowToast(string title, string body)

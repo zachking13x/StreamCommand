@@ -34,6 +34,9 @@ public sealed class VirtualCameraService
 
     public bool IsCapturing { get; private set; }
 
+    // Set to true by OnNewFrame — used by the format-negotiation fallback loop
+    private volatile bool _firstFrameReceived;
+
     // ── Public API ─────────────────────────────────────────────────────────────
 
     /// <summary>Returns true when OBS Virtual Camera is present as a DirectShow device.</summary>
@@ -58,16 +61,16 @@ public sealed class VirtualCameraService
     /// <see langword="true"/> when capture started successfully (or was already running).
     /// <see langword="false"/> when OBS Virtual Camera was not found.
     /// </returns>
-    public Task<bool> StartCaptureAsync(Action<BitmapSource> onFrame)
+    public async Task<bool> StartCaptureAsync(Action<BitmapSource> onFrame)
     {
+        FilterInfo? camera = null;
+        VideoCapabilities[]? caps = null;
+
         lock (_lock)
         {
             _frameReady += onFrame;
+            if (IsCapturing) return true;  // already running, new subscriber registered
 
-            if (IsCapturing) return Task.FromResult(true);  // already running
-
-            // Find OBS Virtual Camera
-            FilterInfo? camera = null;
             try
             {
                 var devices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
@@ -80,26 +83,66 @@ public sealed class VirtualCameraService
             if (camera == null)
             {
                 _frameReady -= onFrame;
-                return Task.FromResult(false);
+                return false;
             }
-
-            _device = new VideoCaptureDevice(camera.MonikerString);
-
-            // Set explicit capture format — without this AForge may negotiate
-            // a format OBS Virtual Camera doesn't deliver frames on
-            var videoCapabilities = _device.VideoCapabilities;
-            if (videoCapabilities != null && videoCapabilities.Length > 0)
-            {
-                // Pick the highest resolution available — OBS Virtual Camera
-                // lists its stream resolution as the first/only capability
-                _device.VideoResolution = videoCapabilities[0];
-            }
-
-            _device.NewFrame += OnNewFrame;
-            _device.Start();
-            IsCapturing = true;
-            return Task.FromResult(true);
         }
+
+        // Try each capability entry until frames arrive — brute-force format negotiation
+        // needed because OBS Virtual Camera doesn't always accept the first entry
+        caps = TryGetCapabilities(camera.MonikerString);
+        int capCount = caps?.Length ?? 0;
+
+        for (int i = 0; i <= capCount; i++)
+        {
+            lock (_lock)
+            {
+                if (_device != null)
+                {
+                    _device.NewFrame -= OnNewFrame;
+                    _device.SignalToStop();
+                }
+                _firstFrameReceived = false;
+                _device = new VideoCaptureDevice(camera.MonikerString);
+                if (caps != null && i < caps.Length)
+                    _device.VideoResolution = caps[i];
+                _device.NewFrame += OnNewFrame;
+                _device.Start();
+                IsCapturing = true;
+            }
+
+            // Wait up to 2 seconds for the first frame — if none, try next capability
+            var deadline = DateTime.UtcNow.AddSeconds(2);
+            while (DateTime.UtcNow < deadline && !_firstFrameReceived)
+                await Task.Delay(50);
+
+            if (_firstFrameReceived) return true;
+
+            // Stop device before trying the next capability
+            await Task.Run(() =>
+            {
+                try { _device?.SignalToStop(); _device?.WaitForStop(); }
+                catch { }
+            });
+        }
+
+        // All capabilities exhausted with no frames
+        lock (_lock)
+        {
+            _frameReady -= onFrame;
+            _device      = null;
+            IsCapturing  = false;
+        }
+        return false;
+    }
+
+    private static VideoCapabilities[]? TryGetCapabilities(string monikerString)
+    {
+        try
+        {
+            var d = new VideoCaptureDevice(monikerString);
+            return d.VideoCapabilities;
+        }
+        catch { return null; }
     }
 
     /// <summary>
@@ -144,6 +187,7 @@ public sealed class VirtualCameraService
 
     private void OnNewFrame(object sender, NewFrameEventArgs e)
     {
+        _firstFrameReceived = true;
         try
         {
             var bmp = e.Frame;   // AForge owns this — do NOT dispose; copy pixels out fast
