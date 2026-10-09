@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
 
-    <Border Background="#1A0F3A"
+    <Border Background="{DynamicResource AccentMuted}"
             BorderBrush="{DynamicResource AccentBorder}"
             BorderThickness="1" CornerRadius="8" Padding="12,9"
             Cursor="Hand"

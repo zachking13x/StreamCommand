@@ -1,7 +1,7 @@
 <Window x:Class="StreamCommand.Views.ProUpgradeWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Stream Command Pro"
+        Title="Go Pro"
         Width="680" Height="660"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
@@ -18,9 +18,9 @@
                         Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="✨" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
-                <TextBlock Text="Stream Command Pro" TextAlignment="Center"
+                <TextBlock Text="Take full control of your stream" TextAlignment="Center"
                            Foreground="{DynamicResource PrimaryText}" FontSize="24" FontWeight="Bold" Margin="0,0,0,6"/>
-                <TextBlock Text="Everything you need to grow your stream — one price, no surprises."
+                <TextBlock Text="Run your whole broadcast from one window — no alt-tabbing, no missed moments."
                            TextAlignment="Center" Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -28,7 +28,61 @@
             <TextBlock x:Name="DynamicHeadline"
                        TextAlignment="Center" Foreground="{DynamicResource AccentLight}"
                        FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"
-                       Margin="0,0,0,20"/>
+                       Margin="0,0,0,18"/>
+
+            <!-- What you unlock with Pro — leads with the wants (preview, alerts, automation) -->
+            <Border Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20,16" Margin="0,0,0,18">
+                <StackPanel>
+                    <!-- 1 — Live preview (hero) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="👁" FontSize="20" Width="34" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="Live preview" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Text="See your stream live inside Stream Command — never alt-tab to check your scene."
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12" TextWrapping="Wrap" MaxWidth="500"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- 2 — On-stream alerts (hero) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="🔔" FontSize="20" Width="34" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="On-stream alerts" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Text="Show follower and sub alerts on your broadcast as they happen."
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12" TextWrapping="Wrap" MaxWidth="500"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- 3 — Unlimited automation (hero) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="⚡" FontSize="20" Width="34" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="Unlimited automation" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Text="Thank every follower and sub automatically while you focus on the game."
+                                       Foreground="{DynamicResource SecondaryText}" FontSize="12" TextWrapping="Wrap" MaxWidth="500"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- 4 — Unlimited scheduled streams (supporting) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="🗓" FontSize="15" Width="34" VerticalAlignment="Center"/>
+                        <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="520">
+                            <Run Text="Unlimited scheduled streams" Foreground="{DynamicResource PrimaryText}" FontWeight="SemiBold" FontSize="12"/>
+                            <Run Text=" — plan your whole calendar ahead." Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <!-- 5 — Analytics history (smallest, last) -->
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📊" FontSize="13" Width="34" VerticalAlignment="Center"/>
+                        <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="520">
+                            <Run Text="Analytics history" Foreground="{DynamicResource SecondaryText}" FontWeight="SemiBold" FontSize="12"/>
+                            <Run Text=" — 30-day follower and viewer trends." Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
             <!-- Pricing cards -->
             <Grid Margin="0,0,0,16">
@@ -258,7 +312,7 @@
             </Border>
 
             <!-- Store note -->
-            <Border Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}"
+            <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource AccentBorder}"
                     BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
                 <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap"
                            Text="🔒  Payments are processed securely through the Microsoft Store. Stream Command never handles your payment details directly. Cancel anytime — no questions asked."/>

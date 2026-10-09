@@ -26,14 +26,14 @@ public class StreamEvent
     public string PlatformBadgeColor => Platform switch
     {
         "YouTube" => "#7F1D1D",
-        "Both" => "#1E3A5F",
-        _ => "#2E1065"
+        "Both"    => "#1E3A5F",
+        _         => "#0a2a20"   // AccentMuted (teal tint, not purple)
     };
     public string PlatformTextColor => Platform switch
     {
         "YouTube" => "#FCA5A5",
-        "Both" => "#93C5FD",
-        _ => "#C4B5FD"
+        "Both"    => "#93C5FD",
+        _         => "#33D6B9"   // AccentLight
     };
 
 }

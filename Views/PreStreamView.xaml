@@ -154,11 +154,44 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        <!-- All-done banner — full-width teal, fades in when every task is checked -->
+        <Border x:Name="AllDoneBanner" Grid.Row="0"
+                Visibility="Collapsed" Opacity="0"
+                Background="{DynamicResource AccentMuted}"
+                BorderBrush="{DynamicResource AccentBrush}"
+                BorderThickness="0,0,0,2"
+                Padding="24,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="✓" Foreground="{DynamicResource AccentLight}"
+                               FontSize="20" FontWeight="Bold" Margin="0,0,12,0"
+                               VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="All set — you're ready to go live!"
+                                   Foreground="{DynamicResource PrimaryText}"
+                                   FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Every pre-stream task is checked off. Good luck out there."
+                                   Foreground="{DynamicResource SecondaryText}" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1" Content="▶  Go Live"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="18,9" FontSize="13"
+                        VerticalAlignment="Center"
+                        Click="GoLive_Click"/>
+            </Grid>
+        </Border>
+
         <!-- Header -->
-        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="20,20,20,10">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="20,20,20,10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -192,7 +225,7 @@
         </Border>
 
         <!-- Sections -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="20,0,20,20">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="20,0,20,20">
             <ItemsControl x:Name="SectionsControl"
                           ItemTemplate="{StaticResource SectionTemplate}"/>
         </ScrollViewer>

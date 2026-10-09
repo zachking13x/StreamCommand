@@ -36,6 +36,28 @@
                            FontSize="13" FontWeight="SemiBold"/>
             </Border>
 
+            <!-- Credential protection failure — secrets were dropped, not written in clear -->
+            <Border x:Name="CredentialWarningBanner"
+                    Visibility="Collapsed"
+                    Background="#2D0A0A"
+                    BorderBrush="{DynamicResource DangerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="14,10"
+                    Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="⚠  Credentials could not be encrypted"
+                               Foreground="#FCA5A5"
+                               FontSize="13" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                    <TextBlock x:Name="CredentialWarningText"
+                               Foreground="#FCA5A5" Opacity="0.9"
+                               FontSize="12" TextWrapping="Wrap"/>
+                    <TextBlock Text="Your other settings were saved. Secrets are never written unencrypted — please try again, or reconnect the affected account."
+                               Foreground="#FCA5A5" Opacity="0.75"
+                               FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
             <!-- Channel Info -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
@@ -308,9 +330,9 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="About" Style="{StaticResource SectionHeader}" Margin="0,0,0,8"/>
-                    <TextBlock Text="Stream Command  v1.0.11" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
-                    <TextBlock Text="All-in-one streaming companion — built for streamers, by a streamer."
-                               Style="{StaticResource Muted}" Margin="0,3,0,14"/>
+                    <TextBlock Text="Stream Command  v1.0.28" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
+                    <TextBlock Text="Control your whole stream without leaving your game — switch scenes, manage audio, and go live without alt-tabbing out."
+                               Style="{StaticResource Muted}" Margin="0,3,0,14" TextWrapping="Wrap"/>
 
                     <!-- Pro status indicator -->
                     <Border x:Name="ProStatusBanner" CornerRadius="6" Padding="10,7" Margin="0,0,0,12"
@@ -318,8 +340,11 @@
                         <TextBlock x:Name="ProStatusText" FontSize="12" FontWeight="SemiBold"/>
                     </Border>
 
-                    <!-- Unlock code entry — for developer / beta testers -->
-                    <StackPanel x:Name="UnlockPanel">
+                    <!-- Unlock code entry — DEBUG/dev only. Collapsed by default; the
+                         activation handler is wired in code-behind under #if DEBUG, so in
+                         release builds this panel never renders and the validation logic is
+                         compiled out entirely (no un-revocable free-Pro backdoor ships). -->
+                    <StackPanel x:Name="UnlockPanel" Visibility="Collapsed">
                         <TextBlock Text="UNLOCK CODE" Style="{StaticResource Label}" Margin="0,0,0,6"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -332,11 +357,11 @@
                                      Style="{StaticResource ModernTextBox}"
                                      Tag="Enter code…"
                                      MaxLength="40"/>
-                            <Button Grid.Column="2"
+                            <Button x:Name="ActivateCodeBtn"
+                                    Grid.Column="2"
                                     Content="Activate"
                                     Style="{StaticResource PrimaryButton}"
-                                    Padding="14,7" FontSize="12"
-                                    Click="ActivateCode_Click"/>
+                                    Padding="14,7" FontSize="12"/>
                         </Grid>
                         <TextBlock x:Name="UnlockResultText"
                                    FontSize="11" Margin="0,5,0,0"

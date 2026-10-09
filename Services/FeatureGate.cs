@@ -26,7 +26,7 @@ namespace StreamCommand.Services
             "live-control",
             "pre-stream",           // checklist view/read (edit is Pro)
             "chat-monitor",
-            "automation-basic",     // up to 3 enabled rules
+            "automation-basic",     // up to 1 enabled rule
             "planner-basic",        // up to 3 scheduled streams
             "analytics-live",       // live/current session data only
             "growth",
@@ -41,7 +41,7 @@ namespace StreamCommand.Services
         private static readonly HashSet<string> _proFeatures = new(System.StringComparer.OrdinalIgnoreCase)
         {
             "analytics-history",        // 30-day chart history
-            "automation-unlimited",     // more than 3 active rules
+            "automation-unlimited",     // more than 1 active rule
             "live-preview",             // OBS Virtual Camera feed inside the app
             "planner-unlimited",        // more than 3 scheduled streams
             "pre-stream-edit",          // add/remove checklist items

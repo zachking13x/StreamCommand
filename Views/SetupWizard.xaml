@@ -60,7 +60,7 @@
 
                 <TextBlock Text="Welcome to Stream Command" TextAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="22" FontWeight="Bold" Margin="0,0,0,8"/>
                 <TextBlock TextAlignment="Center" Foreground="{DynamicResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"
-                           Text="Your all-in-one streaming companion — chat alerts, OBS control, and analytics in one place."/>
+                           Text="Control your whole stream without leaving your game. Switch scenes, manage audio, and go live — all without alt-tabbing out."/>
                 <TextBlock TextAlignment="Center" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,22"
                            Text="Takes about 2 minutes to set up. You can skip any step and come back later in Settings."/>
 
@@ -163,7 +163,7 @@
                 </Border>
 
                 <!-- What we request -->
-                <Border Background="#1A0F3A" BorderBrush="{DynamicResource AccentBorder}"
+                <Border Background="{DynamicResource AccentMuted}" BorderBrush="{DynamicResource AccentBorder}"
                         BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="Stream Command will request access to:" Foreground="{DynamicResource AccentLight}"
@@ -322,17 +322,26 @@
 
         <!-- ══ Footer ══ -->
         <Border Grid.Row="2" BorderBrush="{DynamicResource SeparatorBrush}" BorderThickness="0,1,0,0">
-            <Grid Margin="24,14">
-                <Button x:Name="BackButton" Content="← Back" Style="{StaticResource SecondaryButton}"
-                        HorizontalAlignment="Left" Padding="16,8" Visibility="Collapsed" Click="Back_Click"/>
+            <StackPanel>
+                <Grid Margin="24,8,24,4">
+                    <Button x:Name="BackButton" Content="← Back" Style="{StaticResource SecondaryButton}"
+                            HorizontalAlignment="Left" Padding="16,8" Visibility="Collapsed" Click="Back_Click"/>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="SkipButton" Content="Skip for now" Style="{StaticResource SecondaryButton}"
-                            Padding="14,8" Margin="0,0,10,0" Click="Skip_Click"/>
-                    <Button x:Name="NextButton" Content="Let's Go  →" Style="{StaticResource PrimaryButton}"
-                            Padding="20,8" Click="Next_Click"/>
-                </StackPanel>
-            </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="SkipButton" Content="Skip for now" Style="{StaticResource SecondaryButton}"
+                                Padding="14,8" Margin="0,0,10,0" Click="Skip_Click"/>
+                        <Button x:Name="NextButton" Content="Let's Go  →" Style="{StaticResource PrimaryButton}"
+                                Padding="20,8" Click="Next_Click"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Set up later text link -->
+                <TextBlock Text="Set up later"
+                           HorizontalAlignment="Center" Margin="0,0,0,10"
+                           Foreground="{DynamicResource MutedText}" FontSize="11"
+                           Cursor="Hand" TextDecorations="Underline"
+                           MouseLeftButtonUp="SetupLater_Click"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>

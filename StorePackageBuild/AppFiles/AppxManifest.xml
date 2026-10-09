@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -8,13 +8,13 @@
   <Identity
     Name="590453723.StreamCommand"
     Publisher="CN=19367528-D63E-434A-8936-D6472D317EDC"
-    Version="1.0.25.0" />
+    Version="1.0.28.0" />
 
   <Properties>
     <DisplayName>StreamCommand</DisplayName>
     <PublisherDisplayName>590453723</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
-    <Description>Your all-in-one streaming dashboard — connect Twitch chat, control OBS Studio, manage your pre-stream checklist, plan your schedule, and go live with one click.</Description>
+    <Description>Control your whole stream without leaving your game â€” switch scenes, manage audio, and go live without alt-tabbing out.</Description>
   </Properties>
 
   <Dependencies>
@@ -29,7 +29,7 @@
     <Application Id="StreamCommand" Executable="StreamCommand.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Stream Command"
-        Description="Your all-in-one streaming dashboard"
+        Description="Control your whole stream without leaving your game"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">

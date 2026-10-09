@@ -42,16 +42,16 @@ namespace StreamCommand.Views
         private static string BuildHeadline(UsageContext ctx)
         {
             if (ctx.StreamsCompleted >= 5)
-                return $"You've streamed {ctx.StreamsCompleted} times with Stream Command — unlock the full experience.";
+                return $"You've streamed {ctx.StreamsCompleted} times — unlock live preview and stop alt-tabbing to check your scene.";
             if (ctx.StreamsCompleted >= 3)
-                return "You've been streaming with us — Pro takes everything to the next level.";
+                return "You've got the streaming habit — see your stream live inside the app with Pro.";
             if (ctx.AutomationFiredCount >= 10)
                 return $"Your automations have fired {ctx.AutomationFiredCount} times — go unlimited with Pro.";
             if (ctx.AutomationFiredCount >= 1)
-                return "Your automations are working — Pro removes every limit.";
+                return "Your one free rule is working — Pro unlocks unlimited automation.";
             if (ctx.ProGateHitCount >= 3)
                 return "You keep finding Pro features — they're yours for less than a coffee a month.";
-            return "Everything you need to grow your stream — one price, no surprises.";
+            return "Run your whole broadcast from one window — no alt-tabbing, no missed moments.";
         }
 
         private async void Monthly_Click(object sender, RoutedEventArgs e)

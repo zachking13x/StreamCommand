@@ -27,10 +27,18 @@ public static class StreamEvents
     /// </summary>
     public static event Action? UsageUpdated;
 
+    /// <summary>
+    /// Fired by AutomationEngine each time a rule fires. (triggerLabel, userName)
+    /// Dashboard subscribes for real-time event feed.
+    /// </summary>
+    public static event Action<string, string>? AutomationFired;
+
     public static void RaiseStreamState(bool isLive) => StreamStateChanged?.Invoke(isLive);
     public static void RaiseAlert(string emoji, string message) => AlertFired?.Invoke(emoji, message);
     public static void RaiseOBSState(bool isConnected) => OBSStateChanged?.Invoke(isConnected);
     public static void RaiseChecklistProgress(int done, int total) => ChecklistProgressChanged?.Invoke(done, total);
     public static void RaisePlannerChanged() => PlannerChanged?.Invoke();
     public static void RaiseUsageUpdated() => UsageUpdated?.Invoke();
+    public static void RaiseAutomationFired(string triggerLabel, string userName)
+        => AutomationFired?.Invoke(triggerLabel, userName);
 }

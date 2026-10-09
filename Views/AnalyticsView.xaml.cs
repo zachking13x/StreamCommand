@@ -68,12 +68,13 @@ public partial class AnalyticsView : UserControl
             string.IsNullOrWhiteSpace(s.TwitchClientId)  ||
             string.IsNullOrWhiteSpace(s.TwitchChatToken))
         {
-            ApiStatusBanner.Visibility = Visibility.Visible;
-            ApiStatusText.Text = "ℹ  Live stats require Twitch credentials";
-            ApiHintText.Visibility = Visibility.Visible;
+            // No credentials at all — show the friendly empty state instead of dashes.
+            EmptyStateCard.Visibility  = Visibility.Visible;
+            ApiStatusBanner.Visibility = Visibility.Collapsed;
             return;
         }
 
+        EmptyStateCard.Visibility  = Visibility.Collapsed;
         ApiStatusBanner.Visibility = Visibility.Visible;
         ApiStatusText.Text  = "🔄  Refreshing…";
         ApiHintText.Visibility = Visibility.Collapsed;
@@ -228,6 +229,9 @@ public partial class AnalyticsView : UserControl
             Canvas.SetTop(tb, h - 14);
         }
     }
+
+    private void OpenSetup_Click(object sender, RoutedEventArgs e)
+        => MainWindow.NavigateTo?.Invoke("setup-guide");
 
     private static void DrawBar(Canvas canvas, double x, double bw, double ch, double value, double max, System.Windows.Media.Color color)
     {

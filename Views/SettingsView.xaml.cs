@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -19,6 +21,12 @@ public partial class SettingsView : UserControl
         InitializeComponent();
         _settings = SettingsService.Load();
         LoadIntoFields();
+
+#if DEBUG
+        // Wire the dev unlock button only in DEBUG. The XAML carries no Click attribute,
+        // so in release the handler method is compiled out and nothing references it.
+        ActivateCodeBtn.Click += ActivateCode_Click;
+#endif
     }
 
     private void LoadIntoFields()
@@ -81,9 +89,23 @@ public partial class SettingsView : UserControl
         else
             OBSPort.Text = _settings.OBSWebSocketPort.ToString();   // restore valid value
 
+        CredentialProtection.ClearLastError();
         SettingsService.Save(_settings);
         LoadIntoFields();   // refresh saved-indicators and Twitch banner after save
 
+        // Fail-closed reporting (audit SC-02): if encryption was unavailable the secret was
+        // dropped rather than written in the clear — say so instead of claiming "Saved!".
+        if (CredentialProtection.LastError != null)
+        {
+            CredentialWarningText.Text       = CredentialProtection.LastError;
+            CredentialWarningBanner.Visibility = Visibility.Visible;
+            SaveBtn.Content = "⚠  Saved without credentials";
+            await Task.Delay(4000);
+            SaveBtn.Content = "💾  Save Settings";
+            return;
+        }
+
+        CredentialWarningBanner.Visibility = Visibility.Collapsed;
         SavedBanner.Visibility = Visibility.Visible;
         SaveBtn.Content = "✓  Saved!";
         await Task.Delay(2500);
@@ -128,6 +150,7 @@ public partial class SettingsView : UserControl
                 _settings.TwitchRefreshToken = result.RefreshToken;
                 _settings.TwitchClientId     = result.ClientId;
                 SettingsService.Save(_settings);
+                _ = TwitchChatService.Shared.StartFromSettingsAsync();
 
                 TwitchUsername.Text              = result.Username;
                 TwitchConnectedText.Text         = $"Connected as @{result.Username}";
@@ -205,7 +228,12 @@ public partial class SettingsView : UserControl
 
     private void UpdateProStatus()
     {
+#if DEBUG
         bool isPro = EntitlementService.IsPro || _settings.DevProUnlock;
+#else
+        // Release: DevProUnlock is ignored entirely (see EntitlementService.RefreshAsync).
+        bool isPro = EntitlementService.IsPro;
+#endif
 
         if (isPro)
         {
@@ -214,8 +242,9 @@ public partial class SettingsView : UserControl
             ProStatusBanner.Background    = (System.Windows.Media.Brush)FindResource("AccentMuted");
             ProStatusBanner.BorderBrush   = (System.Windows.Media.Brush)FindResource("AccentBorder");
             ProStatusBanner.BorderThickness = new Thickness(1);
-            // Hide unlock panel — already activated
-            UnlockPanel.Visibility = Visibility.Collapsed;
+#if DEBUG
+            UnlockPanel.Visibility = Visibility.Collapsed;   // already activated
+#endif
         }
         else
         {
@@ -224,23 +253,40 @@ public partial class SettingsView : UserControl
             ProStatusBanner.Background    = (System.Windows.Media.Brush)FindResource("CardBackground");
             ProStatusBanner.BorderBrush   = (System.Windows.Media.Brush)FindResource("BorderBrush");
             ProStatusBanner.BorderThickness = new Thickness(1);
+#if DEBUG
             UnlockPanel.Visibility = Visibility.Visible;
+#endif
+            // Release: UnlockPanel stays Collapsed (its XAML default) and never renders.
         }
     }
 
+#if DEBUG
     private void ActivateCode_Click(object sender, RoutedEventArgs e)
     {
         var code = UnlockCodeBox.Text.Trim();
 
-        // SHA-256 of "STREAM-590453723"
-        const string ValidHash = "B0F5F3ABC9CFD9DB3F90C83DA89EEAAEE560C2E0D92511AE77DCD6DB6A278C05";
+        // The expected hash is NOT stored in source (audit SC-01) — it lived here as a
+        // literal and was readable by anyone browsing the public repo. It now comes from
+        // a local dev environment variable, so nothing secret is committed:
+        //     setx STREAMCMD_DEV_UNLOCK_SHA256 "<uppercase hex sha-256 of your code>"
+        // This whole handler is DEBUG-only and absent from release builds regardless.
+        var expectedHash = Environment.GetEnvironmentVariable("STREAMCMD_DEV_UNLOCK_SHA256");
+        if (string.IsNullOrWhiteSpace(expectedHash))
+        {
+            UnlockResultText.Text       = "✗  Dev unlock not configured (set STREAMCMD_DEV_UNLOCK_SHA256).";
+            UnlockResultText.Foreground = (System.Windows.Media.Brush)FindResource("DangerBrush");
+            UnlockResultText.Visibility = Visibility.Visible;
+            return;
+        }
 
         using var sha = System.Security.Cryptography.SHA256.Create();
         var hash = BitConverter.ToString(
             sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(code)))
             .Replace("-", "").ToUpperInvariant();
 
-        if (hash == ValidHash)
+        if (CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(hash),
+                Encoding.UTF8.GetBytes(expectedHash.Trim().ToUpperInvariant())))
         {
             _settings.DevProUnlock = true;
             SettingsService.Save(_settings);
@@ -263,6 +309,7 @@ public partial class SettingsView : UserControl
             UnlockResultText.Visibility   = Visibility.Visible;
         }
     }
+#endif
 
     // ── External links ───────────────────────────────────────────────────────
 

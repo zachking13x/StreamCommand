@@ -7,7 +7,20 @@
 
 $certSubject = "CN=StreamCommand"
 $certPath    = "$PSScriptRoot\StreamCommandPackage\StreamCommandPackage_TemporaryKey.pfx"
-$certPassword = ConvertTo-SecureString -String "TempPassword123!" -Force -AsPlainText
+
+# Audit SC-07: the export password is no longer hard-coded in source or echoed to the
+# console. Supply it interactively, or via the STREAMCMD_DEV_CERT_PASSWORD environment
+# variable for unattended runs. The generated .pfx is gitignored — never commit it.
+if ($env:STREAMCMD_DEV_CERT_PASSWORD) {
+    $certPassword = ConvertTo-SecureString -String $env:STREAMCMD_DEV_CERT_PASSWORD -Force -AsPlainText
+} else {
+    $certPassword = Read-Host -Prompt "Enter a password to protect the exported .pfx" -AsSecureString
+}
+
+if (-not $certPassword -or $certPassword.Length -eq 0) {
+    Write-Error "A password is required to export the certificate."
+    exit 1
+}
 
 # Check if already exists
 if (Test-Path $certPath) {
@@ -32,7 +45,7 @@ Write-Host "Certificate created: $($cert.Thumbprint)"
 Export-PfxCertificate -Cert $cert -FilePath $certPath -Password $certPassword | Out-Null
 
 Write-Host "Exported to: $certPath"
-Write-Host "Password:    TempPassword123!"
+Write-Host "Password:    (the one you just supplied — not displayed)"
 Write-Host ""
 Write-Host "IMPORTANT:"
 Write-Host "  - This certificate is for local testing ONLY."

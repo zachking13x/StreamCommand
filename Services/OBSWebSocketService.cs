@@ -11,7 +11,14 @@ using System.Threading.Tasks;
 
 namespace StreamCommand.Services;
 
-public enum OBSState { Disconnected, Connecting, Connected, Error }
+public enum OBSState { Disconnected, Connecting, Connected, Error, Reconnecting }
+
+/// <summary>
+/// A request OBS accepted but refused to execute — e.g. unsupported request, invalid
+/// parameters, or a runtime failure. Distinct from a transport failure: the socket is
+/// healthy, so this must NOT trigger a reconnect (review OBS-04).
+/// </summary>
+public readonly record struct ObsRequestFailure(string RequestType, int Code, string Comment);
 
 /// <summary>
 /// Communicates with OBS Studio via the built-in obs-websocket v5 server.
@@ -24,6 +31,58 @@ public class OBSWebSocketService
     public static readonly OBSWebSocketService Shared = new();
     private ClientWebSocket?         _ws;
     private CancellationTokenSource? _cts;
+
+    // ── Connection generation (reliability review OBS-02) ─────────────────────
+    // Every connection attempt takes the next generation number. Listener and fetch tasks
+    // capture their own generation and must check IsCurrentGeneration before mutating any
+    // shared state — otherwise a retired listener can cancel a fresh connection's pending
+    // requests or spawn a duplicate reconnect loop.
+    private int _generation;
+    private readonly object _connGate = new();
+
+    private bool IsCurrentGeneration(int generation)
+    {
+        lock (_connGate) return _generation == generation;
+    }
+
+    // ── Auto-reconnect state ──────────────────────────────────────────────────
+    // Backoff schedule: 3s → 6s → 12s → 24s → 30s, then give up after 5 attempts.
+    private static readonly int[] _backoffSeconds = { 3, 6, 12, 24, 30 };
+    private bool   _userInitiatedDisconnect;
+    private int    _reconnectAttempts;
+    private int    _reconnectRunning;   // 0/1 guard — only one reconnect supervisor at a time
+    private string _lastHost     = "localhost";
+    private int    _lastPort      = 4455;
+    private string _lastPassword  = "";
+
+    /// <summary>Fired after a reconnect has re-queried OBS and republished authoritative state.</summary>
+    public event Action? StateSynchronized;
+
+    /// <summary>Fired when OBS rejects a request (review OBS-04) — an operation failure, not a transport failure.</summary>
+    public event Action<ObsRequestFailure>? RequestFailed;
+
+    // ── Audio meter coalescing (review OBS-06) ───────────────────────────────
+    // InputVolumeMeters arrives ~20×/second. The receive loop only stores the newest
+    // sample; this publisher drains it at a fixed rate so a slow UI handler can never
+    // back-pressure the control plane. Missed samples are intentionally dropped.
+    private Dictionary<string, float>? _latestAudioLevels;
+    private static readonly TimeSpan AudioPublishInterval = TimeSpan.FromMilliseconds(50);   // 20 Hz
+
+    private async Task AudioPublishLoopAsync(int generation, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested && IsCurrentGeneration(generation))
+            {
+                await Task.Delay(AudioPublishInterval, ct);
+
+                var sample = System.Threading.Interlocked.Exchange(ref _latestAudioLevels, null);
+                if (sample is { Count: > 0 }) AudioLevelsUpdated?.Invoke(sample);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch { }
+    }
 
     // Pending request-response pairs keyed by requestId
     private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonNode>>
@@ -49,23 +108,62 @@ public class OBSWebSocketService
     {
         if (State == OBSState.Connected) return true;
 
-        SetState(OBSState.Connecting, "OBS: Connecting…");
+        // Audit SC-05: obs-websocket is a plaintext ws:// protocol and its auth exchange is
+        // password-derived. Restrict to loopback so control traffic and that exchange can
+        // never cross a network unencrypted. Remote OBS would require wss:// + cert
+        // validation, which this client does not implement.
+        if (!IsLoopbackHost(host))
+        {
+            SetState(OBSState.Error,
+                     $"OBS: '{host}' is not allowed — only local OBS connections are supported.");
+            return false;
+        }
+
+        if (port < 1 || port > 65535)
+        {
+            SetState(OBSState.Error, $"OBS: invalid port {port}.");
+            return false;
+        }
+
+        // Remember params so the auto-reconnect loop can re-dial the same server.
+        _lastHost     = host;
+        _lastPort     = port;
+        _lastPassword = password;
+        _userInitiatedDisconnect = false;
+
+        SetState(State == OBSState.Reconnecting ? OBSState.Reconnecting : OBSState.Connecting,
+                 "OBS: Connecting…");
+
+        // Claim a new generation and build this connection's own socket + token, so a
+        // previous listener can never act on them (review OBS-02).
+        int generation;
+        ClientWebSocket socket;
+        CancellationTokenSource cts;
+        lock (_connGate)
+        {
+            _generation++;
+            generation = _generation;
+            _ws?.Dispose();
+            _cts?.Dispose();
+            socket = new ClientWebSocket();
+            cts    = new CancellationTokenSource();
+            _ws    = socket;
+            _cts   = cts;
+        }
+
         try
         {
-            // Dispose any leftover token sources before creating new ones
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-
-            _ws?.Dispose();
-            _ws = new ClientWebSocket();
-            await _ws.ConnectAsync(new Uri($"ws://{host}:{port}"), _cts.Token);
-
-            // Reset to a non-expiring token now that the TCP connection is up
-            _cts.Dispose();
-            _cts = new CancellationTokenSource();
+            // Each handshake phase gets its own bounded deadline (review OBS-03). Previously
+            // only the TCP connect was time-boxed, so an OBS that accepted the socket but
+            // never sent Hello would hang here forever — and, now that reconnect exists,
+            // stall the entire backoff ladder.
+            await WithDeadlineAsync(
+                ct => socket.ConnectAsync(new Uri($"ws://{host}:{port}"), ct),
+                TimeSpan.FromSeconds(5), cts.Token, "connect");
 
             // Step 1 — receive Hello (op 0)
-            var hello = await ReceiveAsync();
+            var hello = await WithDeadlineAsync(
+                ct => ReceiveAsync(socket, ct), TimeSpan.FromSeconds(5), cts.Token, "Hello");
             if (hello is null) throw new Exception("OBS sent no Hello message.");
 
             // Step 2 — build auth string if OBS has a password set
@@ -88,29 +186,91 @@ public class OBSWebSocketService
             await SendAsync(new { op = 1, d = identData });
 
             // Step 4 — receive Identified (op 2)
-            var identified = await ReceiveAsync();
+            var identified = await WithDeadlineAsync(
+                ct => ReceiveAsync(socket, ct), TimeSpan.FromSeconds(5), cts.Token, "Identify");
             if (identified?["op"]?.GetValue<int>() != 2)
                 throw new Exception("OBS rejected the connection. Check your WebSocket password in Settings.");
 
+            // Another connection superseded us mid-handshake — abandon quietly.
+            if (!IsCurrentGeneration(generation)) return false;
+
             SetState(OBSState.Connected, "OBS: Connected ✓");
 
-            // Start the listen loop then immediately fetch the scene list and audio inputs
-            _ = Task.Run(ListenLoopAsync);
-            _ = Task.Run(FetchScenesAsync);
-            _ = Task.Run(FetchAudioInputsAsync);
+            // Own the listener task for this generation only.
+            _ = Task.Run(() => ListenLoopAsync(socket, cts, generation));
+
+            // Audio meters are published on their own cadence, off the receive loop.
+            _ = Task.Run(() => AudioPublishLoopAsync(generation, cts.Token));
+
+            // Reconcile authoritative state before declaring the backoff ladder healthy
+            // (review OBS-05): events missed while offline are recovered here.
+            _ = Task.Run(() => ReconcileStateAsync(generation));
 
             return true;
         }
         catch (OperationCanceledException)
         {
-            SetState(OBSState.Error, "OBS: Connection timed out — is OBS open?");
+            if (IsCurrentGeneration(generation))
+                SetState(OBSState.Error, "OBS: Connection timed out — is OBS open?");
             return false;
         }
         catch (Exception ex)
         {
-            SetState(OBSState.Error, $"OBS: {ex.Message}");
+            if (IsCurrentGeneration(generation))
+                SetState(OBSState.Error, $"OBS: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>Runs <paramref name="op"/> under a bounded deadline linked to the connection token.</summary>
+    private static async Task<T> WithDeadlineAsync<T>(
+        Func<CancellationToken, Task<T>> op, TimeSpan deadline, CancellationToken outer, string phase)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(outer);
+        linked.CancelAfter(deadline);
+        try { return await op(linked.Token); }
+        catch (OperationCanceledException) when (!outer.IsCancellationRequested)
+        {
+            throw new TimeoutException($"OBS did not complete '{phase}' within {deadline.TotalSeconds:0}s.");
+        }
+    }
+
+    private static async Task WithDeadlineAsync(
+        Func<CancellationToken, Task> op, TimeSpan deadline, CancellationToken outer, string phase)
+        => await WithDeadlineAsync<bool>(async ct => { await op(ct); return true; }, deadline, outer, phase);
+
+    /// <summary>
+    /// Re-queries everything the UI treats as authoritative. Runs after every successful
+    /// connect (including reconnects) because events fired while we were offline are lost.
+    /// The backoff ladder only resets once this completes (review OBS-01/OBS-05).
+    /// </summary>
+    private async Task ReconcileStateAsync(int generation)
+    {
+        try
+        {
+            await FetchScenesAsync();
+            if (!IsCurrentGeneration(generation)) return;
+
+            await FetchAudioInputsAsync();
+            if (!IsCurrentGeneration(generation)) return;
+
+            // Streaming status — a stream may have started or stopped while we were away.
+            var streamResp = await SendRequestWithResponseAsync("GetStreamStatus");
+            var streaming  = streamResp?["d"]?["responseData"]?["outputActive"]?.GetValue<bool>();
+            if (streaming is bool live && live != IsStreaming)
+            {
+                IsStreaming = live;
+                StreamingStateChanged?.Invoke(live);
+            }
+
+            if (!IsCurrentGeneration(generation)) return;
+            await GetVirtualCamStatusAsync();
+
+            if (!IsCurrentGeneration(generation)) return;
+            _reconnectAttempts = 0;   // healthy, fully-reconciled connection resets the ladder
+            StateSynchronized?.Invoke();
+        }
+        catch { /* reconciliation is best-effort; the listener drives recovery */ }
     }
 
     public bool IsVirtualCamActive { get; private set; }
@@ -211,25 +371,36 @@ public class OBSWebSocketService
 
     public async Task DisconnectAsync()
     {
-        _cts?.Cancel();
-        if (_ws?.State == WebSocketState.Open)
-            try { await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
-        _ws?.Dispose();
-        _ws = null;
-        _cts?.Dispose();
-        _cts = null;
+        _userInitiatedDisconnect = true;   // suppress the auto-reconnect loop
+        _reconnectAttempts       = 0;
+
+        ClientWebSocket? socket;
+        CancellationTokenSource? cts;
+        lock (_connGate)
+        {
+            _generation++;   // retire the current generation so its listener goes quiet
+            socket = _ws;  _ws  = null;
+            cts    = _cts; _cts = null;
+        }
+
+        try { cts?.Cancel(); } catch { }
+        if (socket?.State == WebSocketState.Open)
+            try { await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
+        try { socket?.Dispose(); } catch { }
+        try { cts?.Dispose(); }    catch { }
+
         SetState(OBSState.Disconnected, "OBS: Disconnected");
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private async Task ListenLoopAsync()
+    private async Task ListenLoopAsync(ClientWebSocket socket, CancellationTokenSource cts, int generation)
     {
         try
         {
-            while (_ws?.State == WebSocketState.Open && !(_cts?.IsCancellationRequested ?? true))
+            while (socket.State == WebSocketState.Open && !cts.IsCancellationRequested)
             {
-                var msg = await ReceiveAsync();
+                var msg = await ReceiveAsync(socket, cts.Token);
                 if (msg is null) break;
 
                 var op = msg["op"]?.GetValue<int>() ?? -1;
@@ -275,14 +446,31 @@ public class OBSWebSocketService
                                 levels[name] = peak;
                             }
 
+                            // Do NOT invoke subscribers inline (review OBS-06). These arrive
+                            // ~20×/second and a slow UI handler would stall the receive loop,
+                            // delaying stream-state events, request responses, and close
+                            // signals. Store the newest sample; a publisher loop drains it at
+                            // a controlled rate, coalescing anything it missed.
                             if (levels.Count > 0)
-                                AudioLevelsUpdated.Invoke(levels);
+                                System.Threading.Volatile.Write(ref _latestAudioLevels, levels);
                         }
                     }
                 }
                 else if (op == 7)   // RequestResponse — complete the pending awaiter
                 {
                     var id = msg["d"]?["requestId"]?.GetValue<string>();
+
+                    // Surface protocol-level request failures instead of letting callers
+                    // silently treat them as no-ops (review OBS-04).
+                    var status = msg["d"]?["requestStatus"];
+                    if (status?["result"]?.GetValue<bool>() == false)
+                    {
+                        RequestFailed?.Invoke(new ObsRequestFailure(
+                            RequestType: msg["d"]?["requestType"]?.GetValue<string>() ?? "(unknown)",
+                            Code:        status["code"]?.GetValue<int>() ?? 0,
+                            Comment:     status["comment"]?.GetValue<string>() ?? ""));
+                    }
+
                     if (id is not null && _pending.TryRemove(id, out var tcs))
                         tcs.TrySetResult(msg);
                 }
@@ -291,13 +479,65 @@ public class OBSWebSocketService
         catch { /* socket closed or cancelled */ }
         finally
         {
-            // Cancel all pending requests so callers don't hang
-            foreach (var kv in _pending)
-                kv.Value.TrySetCanceled();
-            _pending.Clear();
+            // A RETIRED listener must not touch shared state (review OBS-02). _pending is
+            // shared across generations, so clearing it from a stale listener would cancel
+            // the *new* connection's in-flight requests — scene switches and stream start
+            // would fail mysteriously right after a reconnect.
+            if (IsCurrentGeneration(generation))
+            {
+                // Cancel all pending requests so callers don't hang
+                foreach (var kv in _pending)
+                    kv.Value.TrySetCanceled();
+                _pending.Clear();
 
-            if (State == OBSState.Connected)
-                SetState(OBSState.Disconnected, "OBS: Disconnected unexpectedly");
+                // If the socket dropped while we were connected and the user didn't ask
+                // for it, kick off the exponential-backoff reconnect loop.
+                if (State == OBSState.Connected && !_userInitiatedDisconnect)
+                {
+                    SetState(OBSState.Reconnecting, "OBS: Connection lost — reconnecting…");
+                    _ = Task.Run(ReconnectLoopAsync);
+                }
+                else if (State == OBSState.Connected)
+                {
+                    SetState(OBSState.Disconnected, "OBS: Disconnected");
+                }
+            }
+
+            try { socket.Dispose(); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Re-dials the last OBS server with exponential backoff (3s → 6s → 12s → 24s → 30s).
+    /// Gives up after 5 attempts and lands in the Error state so the user can retry manually.
+    /// </summary>
+    private async Task ReconnectLoopAsync()
+    {
+        // Only one supervisor may run — otherwise two loops race the backoff ladder.
+        if (Interlocked.CompareExchange(ref _reconnectRunning, 1, 0) != 0) return;
+        try
+        {
+        while (_reconnectAttempts < _backoffSeconds.Length && !_userInitiatedDisconnect)
+        {
+            int delay = _backoffSeconds[_reconnectAttempts];
+            _reconnectAttempts++;
+            SetState(OBSState.Reconnecting,
+                     $"OBS: Reconnecting in {delay}s (attempt {_reconnectAttempts}/{_backoffSeconds.Length})…");
+
+            try { await Task.Delay(TimeSpan.FromSeconds(delay)); } catch { }
+            if (_userInitiatedDisconnect) return;
+
+            SetState(OBSState.Reconnecting, $"OBS: Reconnecting (attempt {_reconnectAttempts})…");
+            bool ok = await ConnectAsync(_lastHost, _lastPort, _lastPassword);
+            if (ok) return;   // ReconcileStateAsync resets _reconnectAttempts once synced
+        }
+
+        if (!_userInitiatedDisconnect)
+            SetState(OBSState.Error, "OBS: Could not reconnect. Open Live Control to retry.");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _reconnectRunning, 0);
         }
     }
 
@@ -360,17 +600,15 @@ public class OBSWebSocketService
     /// OBS can send scene-list responses larger than a single frame for complex setups.
     /// Throws InvalidOperationException if the total message exceeds 4 MB.
     /// </summary>
-    private async Task<JsonNode?> ReceiveAsync()
+    private static async Task<JsonNode?> ReceiveAsync(ClientWebSocket socket, CancellationToken ct)
     {
-        if (_ws is null) return null;
-
         var buffer = new byte[65536];
         var sb     = new StringBuilder();
         WebSocketReceiveResult result;
 
         do
         {
-            result = await _ws.ReceiveAsync(buffer, _cts?.Token ?? CancellationToken.None);
+            result = await socket.ReceiveAsync(buffer, ct);
             if (result.MessageType == WebSocketMessageType.Close) return null;
             if (sb.Length + result.Count > MaxMessageBytes)
                 throw new InvalidOperationException("OBS message exceeded 4 MB size limit.");
@@ -386,6 +624,22 @@ public class OBSWebSocketService
     {
         var step1 = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(password + salt)));
         return Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(step1 + challenge)));
+    }
+
+    /// <summary>
+    /// True when <paramref name="host"/> refers to this machine. Guards the ws:// transport
+    /// against being pointed at a remote OBS instance (audit SC-05).
+    /// </summary>
+    private static bool IsLoopbackHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host)) return false;
+        host = host.Trim().Trim('[', ']');   // tolerate bracketed IPv6
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
+        if (host.Equals("::1", StringComparison.Ordinal)) return true;
+
+        return System.Net.IPAddress.TryParse(host, out var ip) &&
+               System.Net.IPAddress.IsLoopback(ip);
     }
 
     private void SetState(OBSState state, string message)

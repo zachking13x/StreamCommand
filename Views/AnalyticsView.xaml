@@ -12,7 +12,7 @@
 
             <!-- Live data status -->
             <Border x:Name="ApiStatusBanner" Visibility="Collapsed"
-                    Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}"
+                    Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource AccentBorder}"
                     BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,12">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="ApiStatusText"
@@ -20,6 +20,25 @@
                     <TextBlock x:Name="ApiHintText"
                                Text=" — Connect your Twitch account in Settings to see live data."
                                Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Empty state — shown when no Twitch connection at all -->
+            <Border x:Name="EmptyStateCard" Visibility="Collapsed"
+                    Style="{StaticResource Card}" Margin="0,0,0,14" Padding="32,28">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="📊" FontSize="34" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock Text="No stream data yet" TextAlignment="Center"
+                               Foreground="{DynamicResource PrimaryText}"
+                               FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380"
+                               Foreground="{DynamicResource MutedText}" FontSize="12"
+                               Text="Connect your Twitch account and stream once to start tracking followers, viewers, and stream hours here."/>
+                    <Button Content="Open Setup Guide"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="16,8" Margin="0,16,0,0"
+                            HorizontalAlignment="Center"
+                            Click="OpenSetup_Click"/>
                 </StackPanel>
             </Border>
 

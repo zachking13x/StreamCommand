@@ -49,8 +49,10 @@ namespace StreamCommand.Services
 
         public static async Task RefreshAsync()
         {
-            // Developer / beta unlock — checked before any Store call so it works
-            // in both packaged and unpackaged contexts without touching the Store.
+#if DEBUG
+            // Developer / beta unlock — DEBUG-ONLY so a hand-edited settings.json
+            // (DevProUnlock=true) can never bypass the paywall in shipped release builds.
+            // In release this entire block is compiled out; only a real Store license grants Pro.
             if (SettingsService.Load().DevProUnlock)
             {
                 IsPro           = true;
@@ -58,6 +60,7 @@ namespace StreamCommand.Services
                 Refreshed?.Invoke();
                 return;
             }
+#endif
 
             try
             {

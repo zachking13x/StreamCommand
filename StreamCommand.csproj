@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -10,15 +10,15 @@
     <AssemblyName>StreamCommand</AssemblyName>
     <RootNamespace>StreamCommand</RootNamespace>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-    <!-- Version — bump these for every Store submission -->
-    <Version>1.0.25</Version>
-    <AssemblyVersion>1.0.25.0</AssemblyVersion>
-    <FileVersion>1.0.25.0</FileVersion>
+    <!-- Version â€” bump these for every Store submission -->
+    <Version>1.0.28</Version>
+    <AssemblyVersion>1.0.28.0</AssemblyVersion>
+    <FileVersion>1.0.28.0</FileVersion>
     <Company>Zach Kramer</Company>
     <Authors>Zach Kramer</Authors>
     <Product>Stream Command</Product>
-    <Copyright>Copyright © 2026 Zach Kramer</Copyright>
-    <Description>Your all-in-one streaming dashboard — Twitch chat, OBS control, Go Live in one click.</Description>
+    <Copyright>Copyright Â© 2026 Zach Kramer</Copyright>
+    <Description>Control your whole stream without leaving your game â€” switch scenes, manage audio, and go live without alt-tabbing out.</Description>
     <!-- Produce a self-contained single-folder publish for packaging -->
     <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>false</SelfContained>
@@ -27,6 +27,13 @@
 
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+  </ItemGroup>
+
+  <!-- The test project lives inside this folder; keep its sources out of the app build. -->
+  <ItemGroup>
+    <Compile Remove="StreamCommand.Tests\**" />
+    <None Remove="StreamCommand.Tests\**" />
+    <Page Remove="StreamCommand.Tests\**" />
   </ItemGroup>
 
   <ItemGroup>

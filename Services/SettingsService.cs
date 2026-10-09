@@ -119,6 +119,13 @@ public class AppSettings
     public DateTime? LastReEngagementToast    { get; set; } = null;
     public bool      SetupNudgeSent           { get; set; } = false;
 
+    // ── Review prompt ─────────────────────────────────────────────────────────
+    public bool      ReviewPromptShown        { get; set; } = false;
+    public DateTime? ReviewPromptDate         { get; set; } = null;
+
+    // ── Post-first-stream nudge ───────────────────────────────────────────────
+    public bool      FirstStreamNudgeSent     { get; set; } = false;
+
     public List<ChatCommand>   ChatCommands  { get; set; } = new()
     {
         new() { Trigger = "!discord",  Response = "Join our Discord! Check the channel description for the link.", IsEnabled = true  },
@@ -160,6 +167,16 @@ public static class SettingsService
             var json     = File.ReadAllText(SettingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json, _jsonOpts) ?? new AppSettings();
 
+            // Detect legacy UNENCRYPTED secrets before decoding, so we can rewrite them
+            // under DPAPI once (audit SC-02: migrate plaintext, don't just tolerate it).
+            bool hasLegacyPlaintext =
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.TwitchChatToken)      ||
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.TwitchRefreshToken)   ||
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.TwitchClientSecret)   ||
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.YoutubeApiKey)        ||
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.StreamElementsToken)  ||
+                CredentialProtection.LooksLikeLegacyPlaintext(settings.OBSWebSocketPassword);
+
             // Unprotect DPAPI-wrapped secrets (backward-compat: plaintext values pass through)
             settings.TwitchChatToken      = CredentialProtection.Unprotect(settings.TwitchChatToken);
             settings.TwitchRefreshToken   = CredentialProtection.Unprotect(settings.TwitchRefreshToken);
@@ -174,6 +191,14 @@ public static class SettingsService
                     ev.Id = Guid.NewGuid().ToString();
 
             _cache = settings;
+
+            // One-shot migration: rewrite the file so those plaintext secrets land encrypted.
+            // Save() reads from _cache, so this must run after the cache is populated.
+            if (hasLegacyPlaintext)
+            {
+                try { Save(settings); } catch { /* migration is best-effort */ }
+            }
+
             return _cache;
         }
         catch
@@ -219,15 +244,31 @@ public static class SettingsService
             StreamValueCardDismissed = settings.StreamValueCardDismissed,
             LastReEngagementToast    = settings.LastReEngagementToast,
             SetupNudgeSent           = settings.SetupNudgeSent,
+            ReviewPromptShown        = settings.ReviewPromptShown,
+            ReviewPromptDate         = settings.ReviewPromptDate,
+            FirstStreamNudgeSent     = settings.FirstStreamNudgeSent,
 
-            TwitchChatToken      = CredentialProtection.Protect(settings.TwitchChatToken),
-            TwitchRefreshToken   = CredentialProtection.Protect(settings.TwitchRefreshToken),
-            TwitchClientSecret   = CredentialProtection.Protect(settings.TwitchClientSecret),
-            YoutubeApiKey        = CredentialProtection.Protect(settings.YoutubeApiKey),
-            StreamElementsToken  = CredentialProtection.Protect(settings.StreamElementsToken),
-            OBSWebSocketPassword = CredentialProtection.Protect(settings.OBSWebSocketPassword),
+            // Secrets are protected fail-closed (audit SC-02): if DPAPI is unavailable the
+            // value is dropped rather than written in the clear. ProtectOrDrop records the
+            // failure in CredentialProtection.LastError so the Settings UI can surface it.
+            TwitchChatToken      = ProtectOrDrop(settings.TwitchChatToken),
+            TwitchRefreshToken   = ProtectOrDrop(settings.TwitchRefreshToken),
+            TwitchClientSecret   = ProtectOrDrop(settings.TwitchClientSecret),
+            YoutubeApiKey        = ProtectOrDrop(settings.YoutubeApiKey),
+            StreamElementsToken  = ProtectOrDrop(settings.StreamElementsToken),
+            OBSWebSocketPassword = ProtectOrDrop(settings.OBSWebSocketPassword),
         };
 
         File.WriteAllText(SettingsPath, JsonSerializer.Serialize(toWrite, _jsonOpts));
     }
+
+    /// <summary>
+    /// Encrypts a secret for persistence. On failure returns an empty string — the secret
+    /// is intentionally LOST rather than written to disk unencrypted. It remains valid in
+    /// memory for the current session; the user re-enters it next launch.
+    /// </summary>
+    private static string ProtectOrDrop(string plaintext)
+        => CredentialProtection.TryProtect(plaintext, out var protectedValue)
+            ? protectedValue
+            : string.Empty;
 }

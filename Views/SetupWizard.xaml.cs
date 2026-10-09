@@ -176,6 +176,16 @@ public partial class SetupWizard : Window
         Close();
     }
 
+    private void SetupLater_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var s = SettingsService.Load();
+        s.SetupComplete = true;
+        SettingsService.Save(s);
+        DialogResult = false;
+        Close();
+        MainWindow.NavigateTo?.Invoke("setup-guide");
+    }
+
     // ── OBS Test ─────────────────────────────────────────────────────────────
 
     private async void TestOBS_Click(object sender, RoutedEventArgs e)
@@ -245,6 +255,7 @@ public partial class SetupWizard : Window
                 s.TwitchRefreshToken = result.RefreshToken;
                 s.TwitchClientId     = result.ClientId;
                 SettingsService.Save(s);
+                _ = TwitchChatService.Shared.StartFromSettingsAsync();
 
                 TwitchConnectedText.Text         = $"Connected as @{result.Username}";
                 TwitchConnectedBanner.Visibility = Visibility.Visible;

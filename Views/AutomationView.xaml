@@ -82,7 +82,7 @@
                            Text="Rules fire automatically through your connected Twitch Chat Token in real time. Toggle any rule on or off — changes save instantly."/>
                 <!-- Free plan gate — hidden for Pro users (code-behind toggles visibility) -->
                 <local:ProGateBanner x:Name="FreeLimitBanner"
-                                     FeatureLabel="🔒  Free plan: 3 active rules max — unlock unlimited with Pro"
+                                     FeatureLabel="🔒  Unlock unlimited automation — Upgrade to Pro"
                                      Margin="0,8,0,0"
                                      Visibility="Collapsed"/>
             </StackPanel>
@@ -154,6 +154,54 @@
 
         <!-- ── Rules by Category ── -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+
+            <!-- On-stream alerts advertisement — free users only (code-behind toggles) -->
+            <Border x:Name="AlertsAdCard" Visibility="Collapsed"
+                    Background="{DynamicResource AccentMuted}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="3,0,0,0" CornerRadius="8"
+                    Padding="16,14" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="On-stream alerts" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="4"
+                                    Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="PRO" Foreground="#0a0e14" FontSize="9" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Show follower and sub alerts on your broadcast — celebrate every moment live on screen."
+                                   Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,0,0,10" MaxWidth="420" HorizontalAlignment="Left"/>
+
+                        <!-- Mini preview of what an alert toast looks like -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource AccentBrush}"
+                                BorderThickness="1" CornerRadius="8"
+                                Padding="12,9" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🌟" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="NewViewer42 just followed!"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Content="Upgrade to Pro"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="16,8" VerticalAlignment="Center" Margin="16,0,0,0"
+                            Click="AlertsUpgrade_Click"/>
+                </Grid>
+            </Border>
+
             <ItemsControl x:Name="CategoriesControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -172,6 +220,8 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+          </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>

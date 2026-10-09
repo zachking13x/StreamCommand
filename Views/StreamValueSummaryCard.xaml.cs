@@ -18,25 +18,21 @@ public partial class StreamValueSummaryCard : UserControl
     {
         var s = SettingsService.Load();
 
-        if (s.StreamsCompleted >= 5)
+        // Lead with the want (live preview) first; fall back to the limit (automation cap) second.
+        if (s.StreamsCompleted >= 3)
         {
-            HeadlineText.Text = $"You've completed {s.StreamsCompleted} streams with Stream Command!";
-            SubText.Text      = "Pro unlocks advanced analytics, unlimited automation, live preview, and more — everything that turns good streams into great ones.";
-        }
-        else if (s.StreamsCompleted >= 3)
-        {
-            HeadlineText.Text = "You're on a roll — 3 streams and counting!";
-            SubText.Text      = "Upgrade to Pro and unlock live preview, advanced chat automation, and priority stats — built for streamers who are serious about growing.";
+            HeadlineText.Text = $"You've streamed {s.StreamsCompleted} times — unlock live preview";
+            SubText.Text      = "See your stream live inside Stream Command and stop alt-tabbing to check your scene. Upgrade to Pro.";
         }
         else if (s.AutomationFiredCount >= 5)
         {
-            HeadlineText.Text = $"Your automations have fired {s.AutomationFiredCount} times already!";
-            SubText.Text      = "With Pro you can build unlimited automation rules and schedule them around your stream — your chat engagement on autopilot.";
+            HeadlineText.Text = $"Your automations fired {s.AutomationFiredCount} times — go unlimited";
+            SubText.Text      = "You're running one free rule. Upgrade to Pro to automate every follower, sub, and raid at once.";
         }
         else
         {
-            HeadlineText.Text = "Stream Command is working hard for you.";
-            SubText.Text      = "Upgrade to Pro to unlock every feature — live preview, unlimited automation, advanced analytics, and more.";
+            HeadlineText.Text = "Take full control of your stream";
+            SubText.Text      = "Upgrade to Pro to unlock live preview, on-stream alerts, and unlimited automation — run your whole broadcast from one window.";
         }
     }
 

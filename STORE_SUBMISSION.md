@@ -85,14 +85,15 @@ Stream Command
 
 ### Short Description (max 100 characters)
 ```
-Your all-in-one streaming dashboard for Twitch, OBS, and more.
+Control your whole stream without leaving your game — scenes, audio, and Go Live.
 ```
 
 ### Description (max 10,000 characters — paste this into Partner Center)
 ```
-Stream Command is the ultimate dashboard for live streamers. Connect your Twitch
-chat, control OBS Studio, and manage every part of your stream — all in one
-beautifully designed app.
+Control your whole stream without leaving your game. Switch scenes, manage audio,
+and go live — all without alt-tabbing out. Stream Command puts OBS control, Twitch
+chat, and your pre-stream routine in one window so you stay in the game while you run
+the show.
 
 FEATURES
 

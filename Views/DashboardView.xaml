@@ -4,242 +4,315 @@
              xmlns:local="clr-namespace:StreamCommand.Views"
              Background="{DynamicResource AppBackground}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel x:Name="DashboardStack" Margin="20" MaxWidth="1100">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- top bar -->
+            <RowDefinition Height="*"/>     <!-- main content -->
+        </Grid.RowDefinitions>
 
-            <!-- Conversion card host — injected from code when StreamsCompleted >= 3 -->
-            <StackPanel x:Name="ConversionCardHost"/>
+        <!-- Conversion card host — injected from code when StreamsCompleted >= 3 -->
+        <StackPanel x:Name="ConversionCardHost" Grid.Row="0" Margin="20,16,20,0"/>
 
-            <!-- Ready to Stream Banner -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="Ready to Stream?" Style="{StaticResource SectionHeader}" FontSize="18" Margin="0,0,12,0"/>
-                            <!-- OBS connection status pill -->
-                            <Border x:Name="OBSPill"
-                                    Background="#1A1A2E" BorderBrush="#EF4444"
+        <!-- ── Top bar ──────────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                Padding="24,14,20,14" Background="{DynamicResource AppBackground}">
+            <Grid>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Dashboard" Style="{StaticResource PageHeader}"/>
+                    <TextBlock x:Name="TodayDate" Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                </StackPanel>
+                <Button Content="▶  Go Live"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="18,9" FontSize="13"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Click="GoLive_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- ── Main content: left column + right chat panel ────────────────── -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="270"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left column — Grid so Recent Events stretches to fill the screen -->
+            <Grid Grid.Column="0" Margin="20,16,12,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- status bar -->
+                    <RowDefinition Height="Auto"/>  <!-- two-card row -->
+                    <RowDefinition Height="*"/>     <!-- recent events (fills) -->
+                </Grid.RowDefinitions>
+
+                    <!-- Stream Status Bar -->
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- OBS pill -->
+                            <Border x:Name="OBSPill" Grid.Column="0"
+                                    Background="#1a0a0a" BorderBrush="#EF4444"
                                     BorderThickness="1" CornerRadius="12"
-                                    Padding="8,3" VerticalAlignment="Center">
+                                    Padding="8,4" VerticalAlignment="Center" Margin="0,0,12,0">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse x:Name="OBSPillDot" Width="6" Height="6"
                                              Fill="#EF4444" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="OBSPillText" Text="OBS: Disconnected"
+                                    <TextBlock x:Name="OBSPillText" Text="OBS Offline"
                                                Foreground="#EF4444" FontSize="10" FontWeight="SemiBold"
                                                VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
-                        <TextBlock Text="Launch your stream with one click and manage everything from here."
-                                   Style="{StaticResource Muted}" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="▶   Go Live"
-                            Style="{StaticResource PrimaryButton}"
-                            Padding="20,10"
-                            FontSize="14"
-                            Click="GoLive_Click"/>
-                </Grid>
-            </Border>
 
-            <!-- Stats Row -->
-            <Grid Margin="0,0,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                            <!-- Session timer -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="SESSION" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="SessionTimerText" Text="—"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="15" FontWeight="SemiBold"/>
+                            </StackPanel>
 
-                <!-- Live Viewers -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,7,0">
-                    <StackPanel>
-                        <TextBlock Text="👥  LIVE VIEWERS" Style="{StaticResource Label}"/>
-                        <TextBlock x:Name="LiveViewersText" Text="—"
-                                   Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="Not streaming" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Border>
+                            <!-- Viewers -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="20,0">
+                                <TextBlock Text="VIEWERS" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="LiveViewersText" Text="—"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="15" FontWeight="SemiBold"/>
+                            </StackPanel>
 
-                <!-- Followers -->
-                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0">
-                    <StackPanel>
-                        <TextBlock Text="♥  FOLLOWERS" Style="{StaticResource Label}"/>
-                        <TextBlock x:Name="FollowerCountText" Text="—"
-                                   Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock x:Name="FollowerSubText" Text="Connect Twitch to see count"
-                                   Foreground="{DynamicResource MutedText}"
-                                   FontSize="12" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Border>
+                            <!-- Followers -->
+                            <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,20,0">
+                                <TextBlock Text="FOLLOWERS" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="FollowerCountText" Text="—"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="15" FontWeight="SemiBold"/>
+                            </StackPanel>
 
-                <!-- Chat Messages -->
-                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="7,0">
-                    <StackPanel>
-                        <TextBlock Text="💬  CHAT MESSAGES" Style="{StaticResource Label}"/>
-                        <TextBlock Text="—" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="Not streaming" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Border>
+                            <!-- New followers today -->
+                            <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                                <TextBlock Text="NEW TODAY" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="NewFollowersTodayText" Text="—"
+                                           Foreground="{DynamicResource AccentLight}"
+                                           FontSize="15" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- Streams This Month -->
-                <Border Grid.Column="3" Style="{StaticResource Card}" Margin="7,0,0,0">
-                    <StackPanel>
-                        <TextBlock Text="📺  STREAMS THIS MONTH" Style="{StaticResource Label}"/>
-                        <TextBlock Text="2" Style="{StaticResource ValueText}" Margin="0,4,0,0"/>
-                        <TextBlock Text="May 2026" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Border>
+                    <!-- Two-card row: Checklist + Scene Control -->
+                    <Grid Grid.Row="1" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Pre-Stream Checklist card -->
+                        <Border Grid.Column="0" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Pre-Stream" Style="{StaticResource SectionHeader}"
+                                                   FontSize="14" Margin="0,0,8,0"/>
+                                        <Border x:Name="ChecklistBadge"
+                                                Background="{DynamicResource AccentMuted}"
+                                                BorderBrush="{DynamicResource AccentBorder}"
+                                                BorderThickness="1" CornerRadius="10" Padding="6,2"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:Name="ChecklistBadgeText" Text="—"
+                                                       Foreground="{DynamicResource AccentLight}"
+                                                       FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button Content="Open →" Style="{StaticResource SecondaryButton}"
+                                            HorizontalAlignment="Right" Padding="8,4" FontSize="11"
+                                            Click="OpenChecklist_Click"/>
+                                </Grid>
+
+                                <!-- Ring progress -->
+                                <Grid HorizontalAlignment="Center" Margin="0,4,0,10">
+                                    <Ellipse Width="68" Height="68"
+                                             Stroke="{DynamicResource BorderBrush}"
+                                             StrokeThickness="5"/>
+                                    <Ellipse x:Name="ChecklistRing" Width="68" Height="68"
+                                             Stroke="{DynamicResource AccentBrush}"
+                                             StrokeThickness="5"
+                                             StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                             StrokeDashOffset="0"/>
+                                    <TextBlock x:Name="ChecklistPct" Text="0%"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource PrimaryText}"
+                                               FontSize="14" FontWeight="Bold"/>
+                                </Grid>
+
+                                <!-- Items -->
+                                <StackPanel x:Name="ChecklistItemsPanel"/>
+
+                                <TextBlock x:Name="ChecklistSubText"
+                                           Text="Open checklist to start your pre-stream setup"
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Scene Control card -->
+                        <Border Grid.Column="2" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Scene Control" Style="{StaticResource SectionHeader}"
+                                           FontSize="14" Margin="0,0,0,10"/>
+
+                                <!-- Connected content — active scene + quick-switch buttons -->
+                                <StackPanel x:Name="SceneConnectedContent" Visibility="Collapsed">
+                                    <Border Background="{DynamicResource AccentMuted}"
+                                            BorderBrush="{DynamicResource AccentBorder}"
+                                            BorderThickness="1" CornerRadius="6" Padding="10,8"
+                                            Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <TextBlock Text="ACTIVE" Style="{StaticResource Label}" Margin="0,0,0,2"/>
+                                            <TextBlock x:Name="ActiveSceneText" Text="—"
+                                                       Foreground="{DynamicResource AccentLight}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <StackPanel x:Name="SceneButtonsPanel"/>
+                                </StackPanel>
+
+                                <!-- Designed empty state — OBS not connected -->
+                                <Border x:Name="SceneEmptyState"
+                                        Background="{DynamicResource AccentMuted}"
+                                        BorderBrush="{DynamicResource AccentBrush}"
+                                        BorderThickness="3,0,0,0" CornerRadius="6"
+                                        Padding="16,18">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="🎬" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Connect OBS to control your scenes"
+                                                   Foreground="{DynamicResource SecondaryText}"
+                                                   FontSize="12" TextAlignment="Center" TextWrapping="Wrap"
+                                                   Margin="0,0,0,12"/>
+                                        <Button Content="Open Setup Guide"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="12,6" FontSize="11"
+                                                HorizontalAlignment="Center"
+                                                Click="OpenSetup_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Recent Events card — stretches to fill remaining height -->
+                    <Border Grid.Row="2" Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Recent Events" Style="{StaticResource SectionHeader}"
+                                       FontSize="14" Margin="0,0,0,12"/>
+
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="RecentEventsPanel"/>
+                            </ScrollViewer>
+
+                            <!-- Centered designed empty state -->
+                            <StackPanel Grid.Row="1" x:Name="RecentEventsEmpty"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="⚡" FontSize="30" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="No automation events yet"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Follows, subs, and raids will appear here live as they happen."
+                                           Foreground="{DynamicResource MutedText}"
+                                           FontSize="11" TextAlignment="Center" TextWrapping="Wrap"
+                                           MaxWidth="280" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
             </Grid>
 
-            <!-- Live Preview Card — appears while streaming, gated behind Pro -->
-            <Border x:Name="DashPreviewCard"
-                    Style="{StaticResource Card}" Margin="0,0,0,14"
-                    Visibility="Collapsed">
+            <!-- Right: Live Chat panel -->
+            <Border Grid.Column="1"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0"
+                    Background="{DynamicResource SidebarBackground}">
                 <Grid>
-                    <!-- Upgrade prompt — free users -->
-                    <local:ProGateBanner x:Name="DashPreviewGate"
-                                         FeatureLabel="Live stream preview"
-                                         Visibility="Collapsed"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- header -->
+                        <RowDefinition Height="*"/>     <!-- message list -->
+                        <RowDefinition Height="Auto"/>  <!-- input row -->
+                    </Grid.RowDefinitions>
 
-                    <!-- Preview feed — Pro users -->
-                    <StackPanel x:Name="DashPreviewContent" Visibility="Collapsed">
-                        <TextBlock Text="LIVE PREVIEW" Style="{StaticResource Label}" Margin="0,0,0,10"/>
-                        <Grid Background="#0A0A0F" MaxHeight="140">
-                            <Image x:Name="DashPreviewImage"
-                                   Stretch="Uniform"
-                                   MaxHeight="140"/>
-                            <!-- LIVE badge — top-right -->
-                            <Border HorizontalAlignment="Right" VerticalAlignment="Top"
-                                    Background="#CC000000" CornerRadius="4"
-                                    Padding="8,4" Margin="8">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="#EF4444"
-                                             VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <TextBlock Text="LIVE" Foreground="White"
-                                               FontSize="11" FontWeight="Bold"/>
-                                </StackPanel>
-                            </Border>
-                            <!-- Viewer count — top-left -->
-                            <Border HorizontalAlignment="Left" VerticalAlignment="Top"
-                                    Background="#CC000000" CornerRadius="4"
-                                    Padding="8,4" Margin="8">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="👥 " FontSize="11" VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="DashPreviewViewerCount"
-                                               Text="—" Foreground="White"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Pre-Stream Checklist Progress -->
-            <Border x:Name="ChecklistCard" Style="{StaticResource Card}" Margin="0,0,0,14">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock Text="Pre-Stream Checklist" Style="{StaticResource SectionHeader}" Margin="0,0,12,0"/>
-                            <Border x:Name="ChecklistBadge"
-                                    Background="#2E1065" BorderBrush="{DynamicResource AccentBorder}"
-                                    BorderThickness="1" CornerRadius="10" Padding="8,2"
-                                    VerticalAlignment="Center">
-                                <TextBlock x:Name="ChecklistBadgeText" Text="0 / 19"
-                                           Foreground="{DynamicResource AccentLight}"
-                                           FontSize="11" FontWeight="SemiBold"/>
-                            </Border>
+                    <!-- Chat header -->
+                    <Border Grid.Row="0" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1" Padding="14,11">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="ChatLiveDot" Width="7" Height="7"
+                                     Fill="{DynamicResource MutedText}"
+                                     Margin="0,0,7,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Live Chat" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ChatCountText" Text=""
+                                       Foreground="{DynamicResource MutedText}"
+                                       FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <ProgressBar x:Name="ChecklistProgressBar"
-                                     Minimum="0" Maximum="100" Value="0"
-                                     Height="6"
-                                     Foreground="{DynamicResource AccentBrush}"
-                                     Background="{DynamicResource BorderBrush}"
-                                     Margin="0,0,0,4"/>
-                        <TextBlock x:Name="ChecklistSubText"
-                                   Text="Open checklist to start your pre-stream setup"
-                                   Style="{StaticResource Muted}"/>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Open Checklist →"
-                            Style="{StaticResource SecondaryButton}"
-                            Padding="14,8"
-                            VerticalAlignment="Center"
-                            Click="OpenChecklist_Click"/>
-                </Grid>
-            </Border>
+                    </Border>
 
-            <!-- Chart + Upcoming -->
-            <Grid Margin="0,0,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="14"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                    <!-- Message list -->
+                    <ScrollViewer Grid.Row="1" x:Name="ChatScrollViewer"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="ChatMessagePanel" Margin="0,4,0,4"/>
+                    </ScrollViewer>
 
-                <!-- Viewer Chart -->
-                <Border Grid.Column="0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="Viewer Count" Style="{StaticResource SectionHeader}" Margin="0,0,0,12"/>
-                        <Canvas x:Name="ViewerChart" Height="160"
-                                ClipToBounds="True" Background="Transparent"
-                                Loaded="ViewerChart_Loaded" SizeChanged="ViewerChart_SizeChanged"/>
-                        <Grid Margin="0,8,0,0">
+                    <!-- Designed empty state — Twitch not connected -->
+                    <Border Grid.Row="1" x:Name="ChatEmptyState"
+                            Background="{DynamicResource AccentMuted}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="3,0,0,0" CornerRadius="6"
+                            VerticalAlignment="Center" Margin="14" Padding="14,18">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="💬" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="Connect Twitch to see live chat"
+                                       Foreground="{DynamicResource SecondaryText}"
+                                       FontSize="12" TextAlignment="Center" TextWrapping="Wrap"
+                                       Margin="0,0,0,12"/>
+                            <Button Content="Open Setup Guide"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="12,6" FontSize="11"
+                                    HorizontalAlignment="Center"
+                                    Click="OpenSetup_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Input row -->
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,1,0,0" Padding="10,8">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="0m" Style="{StaticResource Muted}" HorizontalAlignment="Left"/>
-                            <TextBlock Grid.Column="1" Text="5m" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="2" Text="10m" Style="{StaticResource Muted}" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="3" Text="15m" Style="{StaticResource Muted}" HorizontalAlignment="Right"/>
+                            <TextBox x:Name="ChatInputBox"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Padding="8,6" FontSize="12"
+                                     Tag="Send a message…"
+                                     KeyDown="ChatInput_KeyDown"/>
+                            <Button Grid.Column="1" Content="Send"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Padding="10,6" Margin="6,0,0,0" FontSize="12"
+                                    Click="ChatSend_Click"/>
                         </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- Upcoming Streams -->
-                <Border Grid.Column="2" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,12">
-                            <TextBlock Text="Upcoming Streams" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="View all" Foreground="{DynamicResource AccentLight}"
-                                       FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                       Cursor="Hand"/>
-                        </Grid>
-
-                        <StackPanel x:Name="UpcomingList"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Quick Launch -->
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <Grid Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Quick Launch" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="Opens in browser tab" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
-                        </StackPanel>
-                        <TextBlock Text="Manage" Foreground="{DynamicResource AccentLight}"
-                                   FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                   Cursor="Hand"/>
-                    </Grid>
-                    <WrapPanel x:Name="QuickLaunchPanel" Orientation="Horizontal"/>
-                </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
-        </StackPanel>
-    </ScrollViewer>
+        </Grid>
+    </Grid>
+
 </UserControl>

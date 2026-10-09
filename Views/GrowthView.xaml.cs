@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -154,8 +155,11 @@ public partial class GrowthView : UserControl
             ShowCelebration(label);
     }
 
+    private string _currentMilestoneLabel = string.Empty;
+
     private void ShowCelebration(string label)
     {
+        _currentMilestoneLabel  = label;
         CelebrationTitle.Text   = $"🏆  {label} — Milestone hit!";
         CelebrationBanner.Visibility = Visibility.Visible;
 
@@ -174,4 +178,13 @@ public partial class GrowthView : UserControl
 
     private void DismissCelebration_Click(object sender, RoutedEventArgs e)
         => CelebrationBanner.Visibility = Visibility.Collapsed;
+
+    private void ShareMilestone_Click(object sender, RoutedEventArgs e)
+    {
+        var s = SettingsService.Load();
+        var user   = string.IsNullOrWhiteSpace(s.TwitchUsername) ? "a streamer" : $"@{s.TwitchUsername}";
+        var label  = _currentMilestoneLabel.Replace("🏆  ", "").Replace(" — Milestone hit!", "");
+        var text   = Uri.EscapeDataString($"Just hit {label} on Twitch! 🎉 Growing my stream with StreamCommand. #TwitchStreamer #StreamCommand");
+        AppLaunchService.OpenUrl($"https://x.com/intent/post?text={text}");
+    }
 }

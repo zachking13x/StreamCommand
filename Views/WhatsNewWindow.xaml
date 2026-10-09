@@ -113,8 +113,85 @@
                 </StackPanel>
             </Border>
 
+            <!-- v1.0.28 (1.0.27 was never released; its notes ship here) -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14" BorderBrush="{DynamicResource AccentBrush}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="6"
+                                Padding="8,3" Margin="0,0,10,0">
+                            <TextBlock Text="v1.0.28" Foreground="#0a0e14" FontSize="11" FontWeight="Bold"/>
+                        </Border>
+                        <TextBlock Text="October 2026 — Reliability &amp; Chat Fixes" Foreground="{DynamicResource AccentLight}"
+                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="⚡ " FontSize="14"/>
+                            <Run Text="Automation runs from launch" FontWeight="SemiBold"/>
+                            <Run Text=" — chat now connects when the app starts, so your rules work without opening Chat Monitor first"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="💬 " FontSize="14"/>
+                            <Run Text="Send chat from the app" FontWeight="SemiBold"/>
+                            <Run Text=" — type and send messages, and your own messages now show in the feed"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="👁 " FontSize="14"/>
+                            <Run Text="Live preview recovery" FontWeight="SemiBold"/>
+                            <Run Text=" — detects a stalled feed and auto-restarts instead of freezing"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12">
+                            <Run Text="🔌 " FontSize="14"/>
+                            <Run Text="Auto-reconnect" FontWeight="SemiBold"/>
+                            <Run Text=" — OBS and Twitch reconnect automatically if the connection drops"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- v1.0.26 -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14" BorderBrush="{DynamicResource BorderBrush}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource AccentDark}" CornerRadius="6"
+                                Padding="8,3" Margin="0,0,10,0">
+                            <TextBlock Text="v1.0.26" Foreground="#0a0e14" FontSize="11" FontWeight="Bold"/>
+                        </Border>
+                        <TextBlock Text="June 2026 — Big Design Overhaul" Foreground="{DynamicResource AccentLight}"
+                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="🎨 " FontSize="14"/>
+                            <Run Text="Navy/teal theme" FontWeight="SemiBold"/>
+                            <Run Text=" — fresh dark navy base with teal accent throughout"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="📊 " FontSize="14"/>
+                            <Run Text="New Dashboard" FontWeight="SemiBold"/>
+                            <Run Text=" — live chat panel, scene control, recent automation events"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="🔌 " FontSize="14"/>
+                            <Run Text="Setup Guide" FontWeight="SemiBold"/>
+                            <Run Text=" — step-by-step OBS and Twitch connection page"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4">
+                            <Run Text="🎉 " FontSize="14"/>
+                            <Run Text="Stream Summary" FontWeight="SemiBold"/>
+                            <Run Text=" — stats dialog after every stream ends"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12">
+                            <Run Text="💳 " FontSize="14"/>
+                            <Run Text="Payment fix" FontWeight="SemiBold"/>
+                            <Run Text=" — Pro subscription purchases now work correctly"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Feedback CTA -->
-            <Border Background="#0F1B2D" BorderBrush="{DynamicResource AccentBorder}"
+            <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource AccentBorder}"
                     BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
                 <TextBlock Foreground="{DynamicResource MutedText}" FontSize="11" TextWrapping="Wrap">
                     <Run Text="💡  "/>

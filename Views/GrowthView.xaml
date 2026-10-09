@@ -57,7 +57,11 @@
                     Background="#0F1A10" BorderBrush="#4ADE80"
                     BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,14">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <TextBlock x:Name="CelebrationEmoji" Text="🎉" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock x:Name="CelebrationTitle"
@@ -66,10 +70,16 @@
                                        Text="Milestone achieved — keep going, the next one's closer than you think."/>
                         </StackPanel>
                     </StackPanel>
-                    <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Background="Transparent" BorderThickness="0"
-                            Foreground="{DynamicResource MutedText}" FontSize="12" Cursor="Hand"
-                            Click="DismissCelebration_Click"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button x:Name="ShareMilestoneBtn" Content="Share on X"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="10,5" Margin="0,0,8,0" FontSize="11"
+                                Click="ShareMilestone_Click"/>
+                        <Button Content="✕" VerticalAlignment="Center"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="{DynamicResource MutedText}" FontSize="12" Cursor="Hand"
+                                Click="DismissCelebration_Click"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -112,6 +113,8 @@ public partial class PreStreamView : UserControl
                 item.PropertyChanged += (_, _) => RefreshProgress();
     }
 
+    private bool _allDoneShown;
+
     private void RefreshProgress()
     {
         var all   = _sections.SelectMany(s => s.Items).ToList();
@@ -125,7 +128,28 @@ public partial class PreStreamView : UserControl
 
         // Broadcast to Dashboard summary card
         StreamEvents.RaiseChecklistProgress(done, total);
+
+        // All-done banner — fade in once everything is checked, collapse otherwise
+        bool allDone = total > 0 && done == total;
+        if (allDone && !_allDoneShown)
+        {
+            _allDoneShown = true;
+            AllDoneBanner.Visibility = Visibility.Visible;
+            var fade = new System.Windows.Media.Animation.DoubleAnimation(
+                0, 1, TimeSpan.FromMilliseconds(200));
+            AllDoneBanner.BeginAnimation(OpacityProperty, fade);
+        }
+        else if (!allDone && _allDoneShown)
+        {
+            _allDoneShown = false;
+            AllDoneBanner.BeginAnimation(OpacityProperty, null);
+            AllDoneBanner.Opacity    = 0;
+            AllDoneBanner.Visibility = Visibility.Collapsed;
+        }
     }
+
+    private void GoLive_Click(object sender, RoutedEventArgs e)
+        => MainWindow.NavigateTo?.Invoke("live-control");
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {

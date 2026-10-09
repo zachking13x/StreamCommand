@@ -18,6 +18,11 @@ public partial class LiveControlView : UserControl
     private bool _previewRunning;
     private Action<BitmapSource>? _previewHandler;
 
+    // Preview stall watchdog — detects a frozen feed (OBS Virtual Camera stopped)
+    private DispatcherTimer? _previewWatchdog;
+    private bool _previewStalled;
+    private bool _previewRestartTried;   // one auto-restart attempt per stall
+
     // Audio meter state
     private Action<Dictionary<string, float>>? _audioLevelsHandler;
     private DateTime _lastMicSignalTime = DateTime.MinValue;
@@ -56,6 +61,20 @@ public partial class LiveControlView : UserControl
 
         _obs.StreamingStateChanged += isLive =>
             Dispatcher.Invoke(() => OnOBSStreamingStateChanged(isLive));
+
+        // OBS accepted the connection but refused an operation (review OBS-04) — show it
+        // instead of letting a failed scene switch or stream start look like a no-op.
+        _obs.RequestFailed += failure =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                OBSStatusText.Text = string.IsNullOrWhiteSpace(failure.Comment)
+                    ? $"OBS refused '{failure.RequestType}' (code {failure.Code})."
+                    : $"OBS refused '{failure.RequestType}': {failure.Comment}";
+            });
+
+        // After a reconnect, republish reconciled state to the UI.
+        _obs.StateSynchronized += () =>
+            Dispatcher.BeginInvoke(() => OnOBSStreamingStateChanged(_obs.IsStreaming));
 
         // When OBS sends us the real scene list, replace the buttons
         _obs.ScenesLoaded += scenes =>
@@ -405,8 +424,16 @@ public partial class LiveControlView : UserControl
     private void ApplyPreviewProGate()
     {
         bool isPro = FeatureGate.Has("live-preview");
-        PreviewContent.Visibility  = isPro ? Visibility.Visible  : Visibility.Collapsed;
-        PreviewProGate.Visibility  = isPro ? Visibility.Collapsed : Visibility.Visible;
+        PreviewContent.Visibility     = isPro ? Visibility.Visible  : Visibility.Collapsed;
+        PreviewLockedState.Visibility = isPro ? Visibility.Collapsed : Visibility.Visible;
+        // The Start Preview button is meaningless for free users — hide it behind the gate.
+        PreviewBtn.Visibility         = isPro ? Visibility.Visible  : Visibility.Collapsed;
+    }
+
+    private void PreviewUpgrade_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new ProUpgradeWindow { Owner = Window.GetWindow(this) };
+        win.ShowDialog();
     }
 
     private async void StartPreview_Click(object sender, RoutedEventArgs e)
@@ -442,25 +469,90 @@ public partial class LiveControlView : UserControl
         _previewRunning      = true;
         PreviewBtn.Content   = "⏹  Stop Preview";
         PreviewBtn.IsEnabled = true;
+
+        StartPreviewWatchdog();
     }
 
     private void StopPreviewInternal()
     {
+        StopPreviewWatchdog();
         if (_previewHandler != null)
         {
             _ = VirtualCameraService.Instance.StopCaptureAsync(_previewHandler);
             _previewHandler = null;
         }
-        _previewRunning         = false;
-        PreviewImage.Source     = null;
-        PreviewBtn.Content      = "👁  Start Preview";
-        PreviewError.Visibility = Visibility.Collapsed;
+        _previewRunning              = false;
+        PreviewImage.Source          = null;
+        PreviewBtn.Content           = "👁  Start Preview";
+        PreviewError.Visibility      = Visibility.Collapsed;
+        PreviewStalledOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    // ── Stall watchdog ─────────────────────────────────────────────────────────
+
+    private void StartPreviewWatchdog()
+    {
+        _previewStalled      = false;
+        _previewRestartTried = false;
+        _previewWatchdog?.Stop();
+        _previewWatchdog = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _previewWatchdog.Tick += PreviewWatchdog_Tick;
+        _previewWatchdog.Start();
+    }
+
+    private void StopPreviewWatchdog()
+    {
+        if (_previewWatchdog != null)
+        {
+            _previewWatchdog.Stop();
+            _previewWatchdog.Tick -= PreviewWatchdog_Tick;
+            _previewWatchdog = null;
+        }
+        _previewStalled      = false;
+        _previewRestartTried = false;
+    }
+
+    private async void PreviewWatchdog_Tick(object? sender, EventArgs e)
+    {
+        if (!_previewRunning) return;
+
+        var svc       = VirtualCameraService.Instance;
+        var lastFrame = svc.LastFrameTime;
+        bool stale    = svc.IsCapturing
+                     && lastFrame != DateTime.MinValue
+                     && (DateTime.UtcNow - lastFrame) > TimeSpan.FromSeconds(3);
+
+        if (stale && !_previewStalled)
+        {
+            // Feed just stalled — show the paused overlay instead of a frozen frame.
+            _previewStalled = true;
+            PreviewStalledOverlay.Visibility = Visibility.Visible;
+
+            // Attempt exactly one automatic restart of the capture device.
+            if (!_previewRestartTried)
+            {
+                _previewRestartTried = true;
+                if (_previewHandler != null)
+                {
+                    await VirtualCameraService.Instance.StopCaptureAsync(_previewHandler);
+                    await VirtualCameraService.Instance.StartCaptureAsync(_previewHandler);
+                }
+            }
+        }
+        else if (!stale && _previewStalled)
+        {
+            // Frames are flowing again — clear the overlay and re-arm the one-shot restart
+            // so a future stall gets its own single recovery attempt.
+            _previewStalled      = false;
+            _previewRestartTried = false;
+            PreviewStalledOverlay.Visibility = Visibility.Collapsed;
+        }
     }
 
     // ── Settings navigation ──────────────────────────────────────────────────
 
     private void GoToOBSSettings_Click(object sender, RoutedEventArgs e)
-        => MainWindow.NavigateTo?.Invoke("settings");
+        => MainWindow.NavigateTo?.Invoke("setup-guide");
 
     // ── Launch streaming app ─────────────────────────────────────────────────
 

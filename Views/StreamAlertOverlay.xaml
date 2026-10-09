@@ -5,6 +5,7 @@
         Background="Transparent"
         WindowStyle="None"
         ShowInTaskbar="False"
+        ShowActivated="False"
         Topmost="True"
         Width="340"
         SizeToContent="Height"

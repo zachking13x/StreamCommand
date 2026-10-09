@@ -36,6 +36,15 @@ public partial class ChatMonitorView : UserControl
         {
             if (ConnectStatusText != null)
                 ConnectStatusText.Text = status;
+
+            // Surface the banner again whenever we're not in the connected steady-state
+            // (reconnecting, lost, failed) so the user always sees what's happening.
+            bool problem = status.Contains("reconnect", StringComparison.OrdinalIgnoreCase)
+                        || status.Contains("lost",      StringComparison.OrdinalIgnoreCase)
+                        || status.Contains("failed",    StringComparison.OrdinalIgnoreCase)
+                        || status.Contains("⚠");
+            if (problem)
+                ConnectBanner.Visibility = Visibility.Visible;
         });
 
         _chat.Connected += () => Dispatcher.Invoke(() =>
@@ -60,9 +69,9 @@ public partial class ChatMonitorView : UserControl
         if (string.IsNullOrWhiteSpace(s.TwitchUsername) || string.IsNullOrWhiteSpace(s.TwitchChatToken))
             return;   // no credentials yet — show mock messages
 
-        // Clear mock messages and connect for real
+        // Clear mock messages; chat is normally already running from startup.
         _messages.Clear();
-        await _chat.ConnectAsync(s.TwitchUsername, s.TwitchUsername, s.TwitchChatToken);
+        await _chat.StartFromSettingsAsync();
     }
 
     private void AddMessage(TwitchChatMessage msg)
@@ -93,6 +102,35 @@ public partial class ChatMonitorView : UserControl
 
         // Auto-scroll to bottom
         ChatScroller.ScrollToBottom();
+    }
+
+    // ── Sending messages ──────────────────────────────────────────────────────
+
+    private void ChatSend_Click(object sender, RoutedEventArgs e) => SendCurrentMessage();
+
+    private void ChatInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) SendCurrentMessage();
+    }
+
+    private async void SendCurrentMessage()
+    {
+        var text = ChatInputBox.Text.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+
+        var s = SettingsService.Load();
+        if (string.IsNullOrWhiteSpace(s.TwitchUsername) || !_chat.IsConnected)
+        {
+            // Not connected — surface the connect banner instead of silently doing nothing.
+            ConnectBanner.Visibility = Visibility.Visible;
+            ConnectStatusText.Text   = "Connect Twitch before sending a message.";
+            return;
+        }
+
+        ChatInputBox.Text = string.Empty;
+        // Channel = the authenticated user's own channel. The local echo (added in
+        // TwitchChatService.SendMessageAsync) makes the message appear in the feed.
+        await _chat.SendMessageAsync(s.TwitchUsername, text);
     }
 
     // ── Command management ───────────────────────────────────────────────────

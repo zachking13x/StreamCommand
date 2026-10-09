@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using StreamCommand.Services;
@@ -14,68 +16,51 @@ namespace StreamCommand.Views;
 
 public partial class DashboardView : UserControl
 {
-    // Fallback placeholder data — used when not connected to Twitch
-    private static readonly int[] _placeholderData = { 280, 295, 310, 302, 318, 308, 325, 305, 315, 300, 320 };
+    private DispatcherTimer? _sessionTimer;
+    private DateTime         _sessionStart;
+    private bool             _conversionCardShown;
 
-    // Live viewer history — populated each minute while stream is live (max 20 points)
-    private readonly List<int> _liveViewerHistory = new();
-    private DispatcherTimer? _viewerPollTimer;
-
-    private readonly List<(string Label, string Url, string Emoji)> _quickLinks = new()
-    {
-        ("Twitch Dashboard",  "https://dashboard.twitch.tv",              "🟣"),
-        ("YouTube Studio",    "https://studio.youtube.com",               "🔴"),
-        ("Discord Web",       "https://discord.com/app",                  "💬"),
-        ("Pretzel Music",     "https://www.pretzel.rocks",                "🎵"),
-        ("StreamElements",    "https://streamelements.com/dashboard",     "🟠")
-    };
-
-    // Milestone thresholds — celebrated once per threshold, stored in AppSettings
-    private static readonly int[] _milestones = { 100, 500, 1000, 5000, 10000, 15000 };
-
-    // Dashboard preview feed
-    private Action<BitmapSource>? _dashPreviewHandler;
+    // Recent events ring buffer (newest-first, max 5)
+    private readonly List<(string Emoji, string Label, string User, DateTime Time)> _recentEvents = new();
 
     public DashboardView()
     {
         InitializeComponent();
 
-        // Load after layout so FindResource works
+        TodayDate.Text = DateTime.Now.ToString("dddd, MMMM d");
+
         Loaded += async (_, _) =>
         {
-            BuildUpcomingList();
             await RefreshFollowerCountAsync();
             EvaluateConversionCard();
+            LoadScenes();
+            InitChatEmptyState();
         };
 
-        BuildQuickLaunch();
+        OBSWebSocketService.Shared.StateChanged += st => Dispatcher.Invoke(() =>
+        {
+            UpdateOBSPill(st);
+            // Drop the scene card back to its empty state the moment OBS goes away.
+            if (st != OBSState.Connected)
+                ShowSceneEmptyState();
+        });
+        StreamEvents.ChecklistProgressChanged += (d, t) => Dispatcher.Invoke(() => UpdateChecklistCard(d, t));
+        StreamEvents.UsageUpdated         += () => Dispatcher.Invoke(EvaluateConversionCard);
+        StreamEvents.StreamStateChanged   += l  => Dispatcher.Invoke(() => OnStreamStateChanged(l));
+        StreamEvents.AutomationFired      += (trigger, user) => Dispatcher.Invoke(() => AddRecentEvent(trigger, user));
 
-        // OBS state changes
-        StreamEvents.OBSStateChanged += isConnected =>
-            Dispatcher.Invoke(() => UpdateOBSPill(isConnected));
+        OBSWebSocketService.Shared.ScenesLoaded += scenes => Dispatcher.Invoke(() => BuildSceneButtons(scenes));
 
-        // Checklist progress
-        StreamEvents.ChecklistProgressChanged += (done, total) =>
-            Dispatcher.Invoke(() => UpdateChecklistCard(done, total));
+        TwitchChatService.Shared.MessageReceived += msg =>
+            Dispatcher.Invoke(() => AddChatMessage(msg));
 
-        // Planner data changes — refresh the upcoming list live
-        StreamEvents.PlannerChanged += () =>
-            Dispatcher.Invoke(BuildUpcomingList);
+        EntitlementService.Refreshed += () => Dispatcher.Invoke(EvaluateConversionCard);
 
-        // Start/stop live viewer polling when stream goes live or offline
-        StreamEvents.StreamStateChanged += isLive =>
-            Dispatcher.Invoke(() => OnStreamStateChanged(isLive));
-
-        // Re-evaluate preview Pro gate when entitlement changes
-        EntitlementService.Refreshed += () => Dispatcher.Invoke(ApplyDashPreviewProGate);
-
-        // Conversion card — evaluate every time a usage counter updates
-        StreamEvents.UsageUpdated += () => Dispatcher.Invoke(EvaluateConversionCard);
+        // Initialise OBS pill from current state
+        UpdateOBSPill(OBSWebSocketService.Shared.State);
     }
 
     // ── Conversion card ───────────────────────────────────────────────────────
-
-    private bool _conversionCardShown = false;
 
     private void EvaluateConversionCard()
     {
@@ -83,8 +68,7 @@ public partial class DashboardView : UserControl
         if (EntitlementService.IsPro) return;
 
         var s = SettingsService.Load();
-        if (s.StreamValueCardDismissed) return;
-        if (s.StreamsCompleted < 3) return;
+        if (s.StreamValueCardDismissed || s.StreamsCompleted < 3) return;
 
         _conversionCardShown = true;
         var card = new StreamValueSummaryCard();
@@ -97,9 +81,9 @@ public partial class DashboardView : UserControl
         ConversionCardHost.Children.Add(card);
     }
 
-    // ── Follower count + milestone check ─────────────────────────────────────
+    // ── Follower count ─────────────────────────────────────────────────────
 
-    private async System.Threading.Tasks.Task RefreshFollowerCountAsync()
+    private async Task RefreshFollowerCountAsync()
     {
         var s = SettingsService.Load();
         if (string.IsNullOrWhiteSpace(s.TwitchUsername) ||
@@ -111,361 +95,349 @@ public partial class DashboardView : UserControl
             s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
         if (stats == null) return;
 
-        Dispatcher.Invoke(() =>
-        {
-            if (stats.FollowerCount >= 0)
-            {
-                FollowerCountText.Text = stats.FollowerCount.ToString("N0");
-                FollowerSubText.Text   = "Total followers";
-            }
+        if (stats.FollowerCount >= 0)
+            FollowerCountText.Text = stats.FollowerCount.ToString("N0");
 
-            if (stats.IsLive)
-                LiveViewersText.Text = stats.ViewerCount.ToString("N0");
+        if (stats.IsLive)
+            LiveViewersText.Text = stats.ViewerCount.ToString("N0");
 
-            CheckMilestones(stats.FollowerCount);
-        });
+        CheckMilestones(stats.FollowerCount);
     }
 
     private static void CheckMilestones(int followerCount)
     {
         if (followerCount <= 0) return;
+        int[] milestones = { 100, 500, 1000, 5000, 10000 };
         var s = SettingsService.Load();
         bool changed = false;
 
-        foreach (var threshold in _milestones)
+        foreach (var threshold in milestones)
         {
             if (followerCount < threshold) continue;
             var label = threshold.ToString();
             if (s.CelebratedMilestones.Contains(label)) continue;
-
             s.CelebratedMilestones.Add(label);
             changed = true;
-
-            ShowToast(
-                $"🎉  {threshold:N0} followers!",
-                $"You hit {threshold:N0} followers! Congratulations — open Stream Command to celebrate.");
         }
 
         if (changed) SettingsService.Save(s);
     }
 
-    // ── Live viewer chart polling ─────────────────────────────────────────────
+    // ── Stream state / session timer ──────────────────────────────────────────
 
     private void OnStreamStateChanged(bool isLive)
     {
         if (isLive)
         {
-            _liveViewerHistory.Clear();
-            _viewerPollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
-            _viewerPollTimer.Tick += async (_, _) => await PollViewerCountAsync();
-            _viewerPollTimer.Start();
+            _sessionStart = DateTime.UtcNow;
+            ChatLiveDot.Fill = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
 
-            // Show live preview card — Pro gate applied inside
-            DashPreviewCard.Visibility = Visibility.Visible;
-            ApplyDashPreviewProGate();
+            _sessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _sessionTimer.Tick += (_, _) =>
+            {
+                var elapsed = DateTime.UtcNow - _sessionStart;
+                SessionTimerText.Text = elapsed.TotalHours >= 1
+                    ? $"{(int)elapsed.TotalHours}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}"
+                    : $"{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+            };
+            _sessionTimer.Start();
         }
         else
         {
-            _viewerPollTimer?.Stop();
-            _viewerPollTimer = null;
-            _liveViewerHistory.Clear();
-            DrawChart();   // revert to placeholder when offline
-
-            // Stop preview and collapse card
-            if (_dashPreviewHandler != null)
-            {
-                _ = VirtualCameraService.Instance.StopCaptureAsync(_dashPreviewHandler);
-                _dashPreviewHandler = null;
-            }
-            DashPreviewCard.Visibility    = Visibility.Collapsed;
-            DashPreviewImage.Source       = null;
-            DashPreviewViewerCount.Text   = "—";
+            _sessionTimer?.Stop();
+            _sessionTimer     = null;
+            SessionTimerText.Text = "—";
+            LiveViewersText.Text  = "—";
+            ChatLiveDot.Fill = new SolidColorBrush(TC.MutedText);
         }
     }
 
-    private async void ApplyDashPreviewProGate()
+    // ── OBS pill ──────────────────────────────────────────────────────────────
+
+    private void UpdateOBSPill(OBSState state)
     {
-        bool isPro = FeatureGate.Has("live-preview");
-        DashPreviewContent.Visibility = isPro ? Visibility.Visible  : Visibility.Collapsed;
-        DashPreviewGate.Visibility    = isPro ? Visibility.Collapsed : Visibility.Visible;
-
-        if (isPro && _dashPreviewHandler == null)
+        var (c, label) = state switch
         {
-            // Start the feed (no-op if device already open from LiveControl)
-            _dashPreviewHandler = frame => DashPreviewImage.Source = frame;
-            bool started = await VirtualCameraService.Instance.StartCaptureAsync(_dashPreviewHandler);
-            if (!started)
-            {
-                // Virtual camera not found — silently hide the image area
-                _dashPreviewHandler = null;
-                DashPreviewContent.Visibility = Visibility.Collapsed;
-            }
-        }
-        else if (!isPro && _dashPreviewHandler != null)
-        {
-            await VirtualCameraService.Instance.StopCaptureAsync(_dashPreviewHandler);
-            _dashPreviewHandler = null;
-        }
-    }
+            OBSState.Connected    => (Color.FromRgb(0x22, 0xC5, 0x5E), "OBS: Connected"),
+            OBSState.Connecting   => (Color.FromRgb(0xF5, 0x9E, 0x0B), "OBS: Connecting…"),
+            OBSState.Reconnecting => (Color.FromRgb(0xF5, 0x9E, 0x0B), "OBS: Reconnecting…"),
+            _                     => (Color.FromRgb(0xEF, 0x44, 0x44), "OBS: Offline")
+        };
+        var brush = new SolidColorBrush(c);
 
-    private async System.Threading.Tasks.Task PollViewerCountAsync()
-    {
-        var s = SettingsService.Load();
-        if (string.IsNullOrWhiteSpace(s.TwitchUsername) ||
-            string.IsNullOrWhiteSpace(s.TwitchClientId)  ||
-            string.IsNullOrWhiteSpace(s.TwitchChatToken)) return;
-
-        var stats = await TwitchApiService.GetChannelStatsAsync(
-            s.TwitchUsername, s.TwitchClientId, s.TwitchChatToken);
-        if (stats == null) return;
-
-        Dispatcher.Invoke(() =>
-        {
-            if (!stats.IsLive) return;
-
-            LiveViewersText.Text        = stats.ViewerCount.ToString("N0");
-            DashPreviewViewerCount.Text = stats.ViewerCount.ToString("N0");
-            _liveViewerHistory.Add(stats.ViewerCount);
-            if (_liveViewerHistory.Count > 20)
-                _liveViewerHistory.RemoveAt(0);
-            DrawChart();
-        });
+        OBSPill.BorderBrush    = brush;
+        OBSPillDot.Fill        = brush;
+        OBSPillText.Foreground = brush;
+        OBSPillText.Text       = label;
+        OBSPill.Background     = new SolidColorBrush(Color.FromArgb(0x20, c.R, c.G, c.B));
     }
 
     // ── Checklist card ────────────────────────────────────────────────────────
 
     private void UpdateChecklistCard(int done, int total)
     {
-        double pct = total > 0 ? done * 100.0 / total : 0;
-        ChecklistProgressBar.Value = pct;
-        ChecklistBadgeText.Text    = total > 0 ? $"{done} / {total}" : "—";   // MATH 3: no "0 / 0"
+        ChecklistBadgeText.Text = total > 0 ? $"{done} / {total}" : "—";
 
-        if (done == 0)
-            ChecklistSubText.Text = "Open checklist to start your pre-stream setup";
-        else if (done == total)
-            ChecklistSubText.Text = "✓  All tasks complete — you're ready to go live!";
-        else
-            ChecklistSubText.Text = $"{total - done} task{(total - done == 1 ? "" : "s")} remaining before you go live";
+        double pct = total > 0 ? done * 100.0 / total : 0;
+        ChecklistPct.Text = $"{(int)pct}%";
+
+        // Draw ring via StrokeDashArray on a 68x68 ellipse circumference ≈ 213.6
+        const double circumference = 213.6;
+        double filled = circumference * (pct / 100.0);
+        ChecklistRing.StrokeDashArray = new DoubleCollection { filled, circumference - filled };
 
         if (done == total && total > 0)
         {
-            ChecklistBadge.Background     = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
-            ChecklistBadge.BorderBrush    = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
-            ChecklistBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC));
+            ChecklistSubText.Text              = "✓  All tasks complete — you're ready!";
+            ChecklistRing.Stroke               = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            ChecklistBadge.Background          = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
+            ChecklistBadge.BorderBrush         = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            ChecklistBadgeText.Foreground      = new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC));
+        }
+        else
+        {
+            ChecklistSubText.Text = done == 0
+                ? "Open checklist to start your pre-stream setup"
+                : $"{total - done} task{(total - done == 1 ? "" : "s")} remaining";
         }
     }
 
     private void OpenChecklist_Click(object sender, RoutedEventArgs e)
         => MainWindow.NavigateTo?.Invoke("pre-stream");
 
-    // ── OBS pill ──────────────────────────────────────────────────────────────
+    // ── Scene control ─────────────────────────────────────────────────────────
 
-    private void UpdateOBSPill(bool isConnected)
+    private void LoadScenes()
     {
-        var connectedColor    = Color.FromRgb(0x22, 0xC5, 0x5E);
-        var disconnectedColor = Color.FromRgb(0xEF, 0x44, 0x44);
-        var c     = isConnected ? connectedColor : disconnectedColor;
-        var brush = new SolidColorBrush(c);
-
-        OBSPill.BorderBrush    = brush;
-        OBSPillDot.Fill        = brush;
-        OBSPillText.Foreground = brush;
-        OBSPillText.Text       = isConnected ? "OBS: Connected ✓" : "OBS: Disconnected";
-        OBSPill.Background     = isConnected
-            ? new SolidColorBrush(Color.FromArgb(0x20, 0x22, 0xC5, 0x5E))
-            : new SolidColorBrush(Color.FromArgb(0x20, 0xEF, 0x44, 0x44));
+        if (OBSWebSocketService.Shared.State == OBSState.Connected)
+            _ = Task.Run(async () =>
+            {
+                var scenes = await OBSWebSocketService.Shared.GetScenesAsync();
+                Dispatcher.Invoke(() => BuildSceneButtons(scenes));
+            });
     }
 
-    // ── Upcoming streams ──────────────────────────────────────────────────────
-
-    private void BuildUpcomingList()
+    private void BuildSceneButtons(string[] scenes)
     {
-        UpcomingList.Children.Clear();
+        SceneButtonsPanel.Children.Clear();
 
-        var s        = SettingsService.Load();
-        var now      = DateTime.Now;
-        var upcoming = s.PlannerEvents
-                        .Where(e => e.When > now)
-                        .OrderBy(e => e.When)
-                        .Take(3)
-                        .ToList();
-
-        if (upcoming.Count == 0)
+        if (scenes.Length == 0)
         {
-            UpcomingList.Children.Add(new TextBlock
-            {
-                Text         = "No upcoming streams — add one in the Planner",
-                Foreground   = (Brush)FindResource("MutedText"),
-                FontSize     = 12,
-                TextWrapping = TextWrapping.Wrap
-            });
+            ShowSceneEmptyState();
             return;
         }
 
-        foreach (var ev in upcoming)
+        // Connected with scenes — show the real controls, hide the empty state.
+        SceneEmptyState.Visibility        = Visibility.Collapsed;
+        SceneConnectedContent.Visibility  = Visibility.Visible;
+        ActiveSceneText.Text              = scenes.LastOrDefault() ?? "—";
+
+        foreach (var scene in scenes.Take(4))
         {
-            var wrapper = new Border { Margin = new Thickness(0, 0, 0, 8) };
-            var inner   = new Grid();
-            inner.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            inner.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var captured = scene;
+            var btn = new Button
+            {
+                Content   = captured,
+                Style     = (Style)FindResource("SecondaryButton"),
+                Margin    = new Thickness(0, 0, 0, 6),
+                Padding   = new Thickness(10, 7, 10, 7),
+                FontSize  = 12,
+                HorizontalContentAlignment = HorizontalAlignment.Left
+            };
+            btn.Click += async (_, _) =>
+            {
+                await OBSWebSocketService.Shared.SetSceneAsync(captured);
+                ActiveSceneText.Text = captured;
+            };
+            SceneButtonsPanel.Children.Add(btn);
+        }
+    }
+
+    private void ShowSceneEmptyState()
+    {
+        SceneConnectedContent.Visibility = Visibility.Collapsed;
+        SceneEmptyState.Visibility       = Visibility.Visible;
+    }
+
+    private void OpenSetup_Click(object sender, RoutedEventArgs e)
+        => MainWindow.NavigateTo?.Invoke("setup-guide");
+
+    // ── Recent events ─────────────────────────────────────────────────────────
+
+    private void AddRecentEvent(string triggerLabel, string user)
+    {
+        var (emoji, color) = triggerLabel switch
+        {
+            "NewFollower"    => ("♥", Color.FromRgb(0x00, 0xC9, 0xA7)),  // teal
+            "NewSubscriber"  => ("⭐", Color.FromRgb(0x7C, 0x3A, 0xED)), // purple
+            "BitsReceived"   => ("💎", Color.FromRgb(0xF5, 0x9E, 0x0B)), // amber
+            _                => ("⚡", Color.FromRgb(0x6B, 0x80, 0x99))   // muted
+        };
+
+        _recentEvents.Insert(0, (emoji, triggerLabel, user, DateTime.Now));
+        if (_recentEvents.Count > 5) _recentEvents.RemoveAt(5);
+
+        RebuildRecentEventsPanel();
+    }
+
+    private void RebuildRecentEventsPanel()
+    {
+        RecentEventsEmpty.Visibility = _recentEvents.Count == 0
+            ? Visibility.Visible : Visibility.Collapsed;
+
+        RecentEventsPanel.Children.Clear();
+        foreach (var (emoji, label, user, time) in _recentEvents)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var color = label switch
+            {
+                "NewFollower"   => Color.FromRgb(0x00, 0xC9, 0xA7),
+                "NewSubscriber" => Color.FromRgb(0x7C, 0x3A, 0xED),
+                "BitsReceived"  => Color.FromRgb(0xF5, 0x9E, 0x0B),
+                _               => Color.FromRgb(0x6B, 0x80, 0x99)
+            };
 
             var dot = new Ellipse
             {
                 Width  = 8, Height = 8,
-                Fill   = ev.Platform == "YouTube"
-                    ? new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44))
-                    : new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)),
-                Margin            = new Thickness(0, 3, 10, 0),
+                Fill   = new SolidColorBrush(color),
+                Margin = new Thickness(0, 3, 10, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
 
-            var infoStack = new StackPanel();
-            infoStack.Children.Add(new TextBlock
+            var info = new StackPanel();
+            info.Children.Add(new TextBlock
             {
-                Text         = ev.Title,
-                Foreground   = new SolidColorBrush(Colors.White),
-                FontSize     = 13,
-                TextWrapping = TextWrapping.Wrap
-            });
-            infoStack.Children.Add(new TextBlock
-            {
-                Text       = $"{ev.Platform}  ·  {ev.When:MMM d, h:mm tt}",
-                Foreground = (Brush)FindResource("MutedText"),
-                FontSize   = 11,
-                Margin     = new Thickness(0, 2, 0, 0)
+                Text       = $"{emoji} {label.Replace("New", "").Replace("Received", "")} — {user}",
+                Foreground = new SolidColorBrush(TC.PrimaryText),
+                FontSize   = 12
             });
 
+            var timestamp = new TextBlock
+            {
+                Text       = time.ToString("h:mm tt"),
+                Foreground = new SolidColorBrush(TC.MutedText),
+                FontSize   = 11,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
             Grid.SetColumn(dot, 0);
-            Grid.SetColumn(infoStack, 1);
-            inner.Children.Add(dot);
-            inner.Children.Add(infoStack);
-            wrapper.Child = inner;
-            UpcomingList.Children.Add(wrapper);
+            Grid.SetColumn(info, 1);
+            Grid.SetColumn(timestamp, 2);
+            row.Children.Add(dot);
+            row.Children.Add(info);
+            row.Children.Add(timestamp);
+
+            // Slide-in animation
+            row.RenderTransform = new TranslateTransform(0, -8);
+            row.Opacity         = 0;
+            var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300));
+            var slideAnim = new DoubleAnimation(-8, 0, TimeSpan.FromMilliseconds(300));
+            row.BeginAnimation(UIElement.OpacityProperty, anim);
+            ((TranslateTransform)row.RenderTransform).BeginAnimation(TranslateTransform.YProperty, slideAnim);
+
+            RecentEventsPanel.Children.Add(row);
         }
     }
 
-    // ── Quick launch ──────────────────────────────────────────────────────────
+    // ── Live chat panel ───────────────────────────────────────────────────────
 
-    private void BuildQuickLaunch()
+    private int _chatCount;
+
+    /// <summary>Hide the chat empty state once Twitch credentials exist (connection pending/live).</summary>
+    private void InitChatEmptyState()
     {
-        foreach (var (label, url, emoji) in _quickLinks)
-        {
-            var capturedUrl = url;
-            var btn = new Button
-            {
-                Content = $"{emoji}  {label}",
-                Style   = (Style)FindResource("SecondaryButton"),
-                Margin  = new Thickness(0, 0, 8, 8),
-                Padding = new Thickness(14, 8, 14, 8)
-            };
-            btn.Click += (_, _) => AppLaunchService.OpenUrl(capturedUrl);
-            QuickLaunchPanel.Children.Add(btn);
-        }
+        var s = SettingsService.Load();
+        bool hasTwitch = !string.IsNullOrWhiteSpace(s.TwitchUsername)
+                      && !string.IsNullOrWhiteSpace(s.TwitchChatToken);
+        ChatEmptyState.Visibility = hasTwitch ? Visibility.Collapsed : Visibility.Visible;
+    }
 
-        var addBtn = new Button
+    private void AddChatMessage(TwitchChatMessage msg)
+    {
+        if (msg.IsAlert) return;  // alerts go to overlay, not chat panel
+
+        ChatEmptyState.Visibility = Visibility.Collapsed;
+        _chatCount++;
+        ChatCountText.Text = $"({_chatCount})";
+
+        // Random-ish color per user (hash-based so same user = same color each message)
+        var hue = Math.Abs(msg.Username.GetHashCode()) % 360;
+        var userColor = HslToColor(hue, 0.7, 0.65);
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 3, 10, 3) };
+        row.Children.Add(new TextBlock
         {
-            Content = "+  Add App",
-            Style   = (Style)FindResource("SecondaryButton"),
-            Margin  = new Thickness(0, 0, 0, 8),
-            Padding = new Thickness(14, 8, 14, 8)
-        };
-        addBtn.Click += (_, _) => MainWindow.NavigateTo?.Invoke("quick-launch");   // BUG 1: was dead
-        QuickLaunchPanel.Children.Add(addBtn);
+            Text       = msg.Username + ": ",
+            Foreground = new SolidColorBrush(userColor),
+            FontSize   = 12,
+            FontWeight = FontWeights.SemiBold
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text         = msg.Text,
+            Foreground   = new SolidColorBrush(TC.PrimaryText),
+            FontSize     = 12,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth     = 170
+        });
+
+        ChatMessagePanel.Children.Add(row);
+
+        // Cap at 80 messages
+        while (ChatMessagePanel.Children.Count > 80)
+            ChatMessagePanel.Children.RemoveAt(0);
+
+        // Auto-scroll to bottom
+        ChatScrollViewer.ScrollToEnd();
+    }
+
+    private void ChatSend_Click(object sender, RoutedEventArgs e)
+        => SendChatMessage();
+
+    private void ChatInput_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) SendChatMessage();
+    }
+
+    private async void SendChatMessage()
+    {
+        var text = ChatInputBox.Text.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+        ChatInputBox.Text = string.Empty;
+
+        var s = SettingsService.Load();
+        if (string.IsNullOrWhiteSpace(s.TwitchUsername)) return;
+
+        await TwitchChatService.Shared.SendMessageAsync(s.TwitchUsername, text);
     }
 
     private void GoLive_Click(object sender, RoutedEventArgs e)
         => MainWindow.NavigateTo?.Invoke("live-control");
 
-    // ── Viewer chart ──────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void ViewerChart_Loaded(object sender, RoutedEventArgs e) => DrawChart();
-    private void ViewerChart_SizeChanged(object sender, SizeChangedEventArgs e) => DrawChart();
-
-    private void DrawChart()
+    private static Color HslToColor(double h, double s, double l)
     {
-        ViewerChart.Children.Clear();
-        double w = ViewerChart.ActualWidth;
-        double h = ViewerChart.ActualHeight;
-        if (w < 10 || h < 10) return;
+        double c  = (1 - Math.Abs(2 * l - 1)) * s;
+        double x  = c * (1 - Math.Abs((h / 60) % 2 - 1));
+        double m  = l - c / 2;
+        double r, g, b;
 
-        // Use live history when available, fall back to placeholder
-        int[] data = _liveViewerHistory.Count >= 2
-            ? _liveViewerHistory.ToArray()
-            : _placeholderData;
+        if      (h < 60)  { r = c;  g = x;  b = 0; }
+        else if (h < 120) { r = x;  g = c;  b = 0; }
+        else if (h < 180) { r = 0;  g = c;  b = x; }
+        else if (h < 240) { r = 0;  g = x;  b = c; }
+        else if (h < 300) { r = x;  g = 0;  b = c; }
+        else              { r = c;  g = 0;  b = x; }
 
-        int min   = Math.Max(0, data.Min() - 10);   // MATH 2: clamp to 0 — small channels never go negative
-        int max   = data.Max() + 10;
-        double range = Math.Max(1, max - min);
-        int n = data.Length;
-
-        var fillPoints = new PointCollection();
-        var linePoints = new PointCollection();
-
-        for (int i = 0; i < n; i++)
-        {
-            double x = i / (double)(n - 1) * w;
-            double y = h - ((data[i] - min) / range * (h - 10)) - 5;
-            linePoints.Add(new Point(x, y));
-            fillPoints.Add(new Point(x, y));
-        }
-        fillPoints.Add(new Point(w, h));
-        fillPoints.Add(new Point(0, h));
-
-        ViewerChart.Children.Add(new Polygon
-        {
-            Points = fillPoints,
-            Fill   = new LinearGradientBrush(
-                Color.FromArgb(0x14, TC.Accent.R, TC.Accent.G, TC.Accent.B),
-                Color.FromArgb(0x05, TC.Accent.R, TC.Accent.G, TC.Accent.B),
-                new Point(0, 0), new Point(0, 1)),
-            Stroke = Brushes.Transparent
-        });
-
-        ViewerChart.Children.Add(new Polyline
-        {
-            Points          = linePoints,
-            Stroke          = new SolidColorBrush(TC.Accent),
-            StrokeThickness = 1.5,
-            StrokeLineJoin  = PenLineJoin.Round
-        });
-
-        var lastPt = linePoints[n - 1];
-        var dot = new Ellipse
-        {
-            Width = 8, Height = 8,
-            Fill   = new SolidColorBrush(TC.AccentLight),
-            Stroke = new SolidColorBrush(TC.AppBg),
-            StrokeThickness = 2
-        };
-        Canvas.SetLeft(dot, lastPt.X - 4);
-        Canvas.SetTop(dot,  lastPt.Y - 4);
-        ViewerChart.Children.Add(dot);
-    }
-
-    // ── Toast helper ─────────────────────────────────────────────────────────
-
-    private static void ShowToast(string title, string body)
-    {
-        try
-        {
-            title = System.Security.SecurityElement.Escape(title);
-            body  = System.Security.SecurityElement.Escape(body);
-
-            var xml = new Windows.Data.Xml.Dom.XmlDocument();
-            xml.LoadXml($"""
-                <toast>
-                  <visual>
-                    <binding template="ToastGeneric">
-                      <text>{title}</text>
-                      <text>{body}</text>
-                    </binding>
-                  </visual>
-                </toast>
-                """);
-            var toast = new Windows.UI.Notifications.ToastNotification(xml);
-            Windows.UI.Notifications.ToastNotificationManager
-                .CreateToastNotifier().Show(toast);
-        }
-        catch { }
+        return Color.FromRgb(
+            (byte)((r + m) * 255),
+            (byte)((g + m) * 255),
+            (byte)((b + m) * 255));
     }
 }

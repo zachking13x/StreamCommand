@@ -4,7 +4,7 @@
         Title="Stream Command"
         Icon="/Assets/icon.ico"
         Height="780" Width="1280"
-        MinHeight="620" MinWidth="940"
+        MinHeight="620" MinWidth="960"
         Background="{DynamicResource AppBackground}"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True"
@@ -15,45 +15,26 @@
 
     <Window.Resources>
 
-        <!-- UI3: NavItem — 3px left accent bar on selected, no background box -->
         <Style x:Key="NavItem" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="14,9,12,9"/>
-            <Setter Property="Margin" Value="0,1"/>
-            <Setter Property="Foreground" Value="{DynamicResource MutedText}"/>
+            <Setter Property="Padding" Value="14,8,12,8"/>
+            <Setter Property="Margin" Value="8,1"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryText}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <!-- 3px accent bar column -->
-                                <ColumnDefinition Width="3"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Selected accent bar -->
-                            <Border x:Name="AccentBar"
-                                    Grid.Column="0"
-                                    Background="Transparent"
-                                    CornerRadius="0,2,2,0"/>
-
-                            <!-- Item content -->
-                            <Border x:Name="Bd"
-                                    Grid.Column="1"
-                                    Background="Transparent"
-                                    CornerRadius="6"
-                                    Margin="6,0,8,0"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter VerticalAlignment="Center"/>
-                            </Border>
-                        </Grid>
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource NavSelectedBg}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource AccentLight}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CardBackground}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HoverBackground}"/>
@@ -65,7 +46,6 @@
             </Setter>
         </Style>
 
-        <!-- Nav ListBox -->
         <Style x:Key="NavList" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -79,167 +59,268 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- ═══ SIDEBAR ═══ -->
         <Border Grid.Column="0"
                 Background="{DynamicResource SidebarBackground}"
-                BorderBrush="{DynamicResource SeparatorBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,1,0">
             <DockPanel>
 
-                <!-- UI3: Simple wordmark — no gradient box -->
+                <!-- Logo / Wordmark -->
                 <Border DockPanel.Dock="Top"
-                        Padding="18,20,16,16"
-                        BorderBrush="{DynamicResource SeparatorBrush}"
+                        Padding="16,18,16,14"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="28" Height="28" CornerRadius="6"
-                                Background="{DynamicResource AccentBrush}"
-                                Margin="0,0,10,0">
-                            <TextBlock Text="▶" Foreground="White"
-                                       FontSize="12" FontWeight="Bold"
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
+                            <Border Width="30" Height="30" CornerRadius="8"
+                                    Background="{DynamicResource AccentBrush}"
+                                    Margin="0,0,10,0">
+                                <TextBlock Text="S" Foreground="#0a0e14"
+                                           FontSize="16" FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Stream Command"
+                                       Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <!-- Twitch connection pill -->
+                        <Border x:Name="TwitchPill"
+                                Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="20"
+                                Padding="8,4" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="TwitchDot" Width="6" Height="6"
+                                         Fill="{DynamicResource MutedText}" Margin="0,0,5,0"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TwitchPillText"
+                                           Text="Not connected"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           FontSize="10" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- User profile row at bottom -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="12,10"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- Initials avatar -->
+                        <Border Grid.Column="0"
+                                Width="32" Height="32" CornerRadius="16"
+                                Background="{DynamicResource AccentMuted}"
+                                BorderBrush="{DynamicResource AccentBorder}"
+                                BorderThickness="1" Margin="0,0,10,0">
+                            <TextBlock x:Name="UserInitials" Text="?"
+                                       Foreground="{DynamicResource AccentLight}"
+                                       FontSize="13" FontWeight="Bold"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <TextBlock Text="Stream Command"
-                                   Foreground="{DynamicResource PrimaryText}"
-                                   FontSize="13" FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
+                        <!-- Username + rank -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock x:Name="SidebarUsername" Text="Not connected"
+                                       Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="SidebarRank" Text="Streamer"
+                                       Foreground="{DynamicResource MutedText}"
+                                       FontSize="10"/>
+                        </StackPanel>
+                        <!-- PRO badge (hidden when not Pro) -->
+                        <Border x:Name="ProBadge" Grid.Column="2"
+                                Background="{DynamicResource AccentMuted}"
+                                BorderBrush="{DynamicResource AccentBorder}"
+                                BorderThickness="1" CornerRadius="4"
+                                Padding="5,2" Visibility="Collapsed">
+                            <TextBlock Text="PRO" Foreground="{DynamicResource AccentLight}"
+                                       FontSize="9" FontWeight="Bold"/>
+                        </Border>
+                    </Grid>
                 </Border>
 
-                <!-- UI3: Upgrade Pro — flat, no gradient -->
-                <Border DockPanel.Dock="Bottom"
-                        Margin="12,0,12,12"
-                        CornerRadius="8"
-                        Padding="12,10"
-                        Background="{DynamicResource AccentMuted}"
-                        BorderBrush="{DynamicResource AccentBorder}"
-                        BorderThickness="1"
-                        Cursor="Hand"
-                        MouseLeftButtonUp="UpgradePro_Click">
-                    <StackPanel>
-                        <TextBlock Text="✦  Upgrade to Pro" Foreground="{DynamicResource AccentLight}"
-                                   FontSize="12" FontWeight="SemiBold"/>
-                        <TextBlock Text="Unlock all features" Foreground="{DynamicResource MutedText}"
-                                   FontSize="11" Margin="0,3,0,0"/>
-                    </StackPanel>
-                </Border>
+                <!-- Nav Items — scrollable middle -->
+                <ScrollViewer VerticalScrollBarVisibility="Hidden">
+                    <ListBox x:Name="NavList"
+                             Style="{StaticResource NavList}"
+                             SelectionChanged="NavList_SelectionChanged"
+                             Padding="0,8,0,4">
 
-                <!-- Nav Items -->
-                <ListBox x:Name="NavList"
-                         Style="{StaticResource NavList}"
-                         SelectionChanged="NavList_SelectionChanged"
-                         Padding="0,10,0,6">
-
-                    <ListBoxItem Tag="dashboard">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⊞" Width="18" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Dashboard" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="live-control">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="◉" Width="18" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Live Control" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="pre-stream">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="☑" Width="18" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Pre-Stream" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="chat-monitor">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="💬" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Chat Monitor" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="automation">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚡" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Automation" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="planner">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📅" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Planner" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="analytics">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📈" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Analytics" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="growth">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📊" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <TextBlock Text="Growth" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="quick-launch">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🚀" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="Quick Launch" FontSize="13"/>
-                                <TextBlock Text="Your saved apps" Foreground="{DynamicResource MutedText}"
-                                           FontSize="10" Margin="0,1,0,0"/>
+                        <!-- Main section -->
+                        <ListBoxItem Tag="dashboard">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⊞" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Dashboard" VerticalAlignment="Center" Margin="9,0,0,0"/>
                             </StackPanel>
-                        </StackPanel>
-                    </ListBoxItem>
+                        </ListBoxItem>
 
-                    <ListBoxItem Tag="tools-hub">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🔧" Width="18" FontSize="13" VerticalAlignment="Center"/>
-                            <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="Streamer Tools" FontSize="13"/>
-                                <TextBlock Text="Curated directory" Foreground="{DynamicResource MutedText}"
-                                           FontSize="10" Margin="0,1,0,0"/>
+                        <ListBoxItem Tag="live-control">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="◉" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Live Control" VerticalAlignment="Center" Margin="9,0,0,0"/>
                             </StackPanel>
-                        </StackPanel>
-                    </ListBoxItem>
+                        </ListBoxItem>
 
-                    <ListBoxItem Tag="settings">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚙" Width="18" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Settings" VerticalAlignment="Center" Margin="9,0,0,0"/>
-                        </StackPanel>
-                    </ListBoxItem>
-
-                    <ListBoxItem Tag="whats-new">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📣" Width="18" FontSize="12" VerticalAlignment="Center"/>
-                            <StackPanel Margin="9,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
-                                <TextBlock Text="What's New" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource AccentBrush}" CornerRadius="8"
-                                        Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="v1.0.16" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                                </Border>
+                        <ListBoxItem Tag="pre-stream">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="☑" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Pre-Stream" VerticalAlignment="Center" Margin="9,0,0,0"/>
                             </StackPanel>
-                        </StackPanel>
-                    </ListBoxItem>
+                        </ListBoxItem>
 
-                </ListBox>
+                        <ListBoxItem Tag="chat-monitor">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💬" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Chat Monitor" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <!-- Grow section -->
+                        <ListBoxItem IsHitTestVisible="False" Padding="0" Margin="0">
+                            <TextBlock Text="GROW" Style="{StaticResource NavSectionLabel}"/>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="automation">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚡" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Automation" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="analytics">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📈" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Analytics" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="growth">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Growth" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="planner">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📅" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Planner" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <!-- Tools section -->
+                        <ListBoxItem IsHitTestVisible="False" Padding="0" Margin="0">
+                            <TextBlock Text="TOOLS" Style="{StaticResource NavSectionLabel}"/>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="quick-launch">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🚀" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Quick Launch" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="tools-hub">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔧" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Streamer Tools" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="settings">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚙" Width="16" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="setup-guide">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="?" Width="16" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentLight}"/>
+                                <TextBlock Text="Setup Guide" VerticalAlignment="Center" Margin="9,0,0,0"/>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                        <ListBoxItem Tag="whats-new">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📣" Width="16" FontSize="12" VerticalAlignment="Center"/>
+                                <StackPanel Margin="9,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                                    <TextBlock Text="What's New" VerticalAlignment="Center"/>
+                                    <Border Background="{DynamicResource AccentBrush}" CornerRadius="8"
+                                            Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="v1.0.28" Foreground="#0a0e14" FontSize="9" FontWeight="Bold"/>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </ListBoxItem>
+
+                    </ListBox>
+                </ScrollViewer>
             </DockPanel>
         </Border>
 
-        <!-- ═══ MAIN CONTENT ═══ -->
-        <ContentControl x:Name="MainContent"
-                        Grid.Column="1"
-                        Background="{DynamicResource AppBackground}"/>
+        <!-- ═══ MAIN CONTENT AREA ═══ -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <!-- Review prompt banner slot — hidden by default -->
+                <RowDefinition x:Name="ReviewBannerRow" Height="0"/>
+            </Grid.RowDefinitions>
+
+            <ContentControl x:Name="MainContent"
+                            Grid.Row="0"
+                            Background="{DynamicResource AppBackground}"/>
+
+            <!-- Review prompt banner -->
+            <Border x:Name="ReviewBanner" Grid.Row="1"
+                    Background="{DynamicResource CardBackground}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="0,2,0,0"
+                    Padding="20,10"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="⭐" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="1"
+                               Text="Enjoying StreamCommand? A quick review helps other streamers find it."
+                               Foreground="{DynamicResource PrimaryText}"
+                               FontSize="13" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="Leave a review"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="12,6" Margin="12,0,8,0"
+                            Click="ReviewLeave_Click"/>
+                    <Button Grid.Column="3" Content="Maybe later"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="10,6" Margin="0,0,8,0"
+                            Click="ReviewLater_Click"/>
+                    <Button Grid.Column="4" Content="✕"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="{DynamicResource MutedText}"
+                            FontSize="14" Padding="6,4" Cursor="Hand"
+                            Click="ReviewLater_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

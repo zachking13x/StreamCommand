@@ -231,6 +231,21 @@
                                                    FontSize="11" FontWeight="Bold"/>
                                     </StackPanel>
                                 </Border>
+                                <!-- Stalled-feed overlay — shown instead of a frozen frame -->
+                                <Border x:Name="PreviewStalledOverlay" Visibility="Collapsed"
+                                        Background="#D90A0A0F">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380" Margin="20">
+                                        <TextBlock Text="⏸" FontSize="30" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource AccentLight}" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Live preview paused"
+                                                   Foreground="{DynamicResource PrimaryText}"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   TextAlignment="Center" Margin="0,0,0,4"/>
+                                        <TextBlock Text="No frames from OBS Virtual Camera. Make sure it's running in OBS (Tools → Start Virtual Camera)."
+                                                   Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                                   TextAlignment="Center" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                             <!-- Error shown when OBS Virtual Camera is not found -->
                             <TextBlock x:Name="PreviewError"
@@ -241,10 +256,30 @@
                                        Visibility="Collapsed"/>
                         </StackPanel>
 
-                        <!-- Upgrade prompt — free users -->
-                        <local:ProGateBanner x:Name="PreviewProGate"
-                                             FeatureLabel="Live stream preview"
-                                             Visibility="Collapsed"/>
+                        <!-- Locked placeholder — free users see what they're missing -->
+                        <Border x:Name="PreviewLockedState" Visibility="Collapsed"
+                                Height="360" CornerRadius="8" ClipToBounds="True">
+                            <Grid>
+                                <!-- Faux preview backdrop -->
+                                <Border Background="#0A0A0F"/>
+                                <Border Background="{DynamicResource AccentMuted}" Opacity="0.35"/>
+                                <!-- Overlay message -->
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="20">
+                                    <TextBlock Text="🔒" FontSize="34" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="See your stream live inside Stream Command"
+                                               Foreground="{DynamicResource PrimaryText}"
+                                               FontSize="16" FontWeight="SemiBold"
+                                               TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Never alt-tab to check your scene again. Upgrade to Pro to unlock live preview."
+                                               Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                               TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                                    <Button Content="Upgrade to Pro"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Padding="22,9" HorizontalAlignment="Center"
+                                            Click="PreviewUpgrade_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -267,8 +302,8 @@
             <!-- Offline / Setup Guide Banner -->
             <Border x:Name="OfflineBanner"
                     Background="{DynamicResource AccentMuted}"
-                    BorderBrush="{DynamicResource AccentBorder}"
-                    BorderThickness="1"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="3,0,0,0"
                     CornerRadius="10"
                     Padding="20,16"
                     Margin="0,14,0,0">
@@ -314,7 +349,7 @@
                         </StackPanel>
                     </StackPanel>
                     <Button Grid.Column="1"
-                            Content="Open OBS Settings →"
+                            Content="Open Setup Guide →"
                             Style="{StaticResource SecondaryButton}"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Right"

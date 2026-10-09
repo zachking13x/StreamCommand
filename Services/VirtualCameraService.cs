@@ -34,6 +34,13 @@ public sealed class VirtualCameraService
 
     public bool IsCapturing { get; private set; }
 
+    /// <summary>
+    /// UTC timestamp of the most recently received frame. Consumers use this to detect a
+    /// stalled feed (e.g. OBS Virtual Camera stopped) and show a "paused" state instead of
+    /// a frozen frame. <see cref="DateTime.MinValue"/> until the first frame arrives.
+    /// </summary>
+    public DateTime LastFrameTime { get; private set; } = DateTime.MinValue;
+
     // Set to true by OnNewFrame — used by the format-negotiation fallback loop
     private volatile bool _firstFrameReceived;
 
@@ -188,6 +195,7 @@ public sealed class VirtualCameraService
     private void OnNewFrame(object sender, NewFrameEventArgs e)
     {
         _firstFrameReceived = true;
+        LastFrameTime       = DateTime.UtcNow;   // watchdogs use this to detect a stalled feed
         try
         {
             var bmp = e.Frame;   // AForge owns this — do NOT dispose; copy pixels out fast

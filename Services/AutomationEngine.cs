@@ -68,7 +68,12 @@ public sealed class AutomationEngine
             SettingsService.Save(s);
         }
 
-        _rules = saved.Where(r => r.IsEnabled).ToList();
+        // Free tier runs only the FIRST enabled rule — one to taste it, the rest is the
+        // upgrade nudge. Pro (automation-unlimited) runs every enabled rule.
+        var enabled = saved.Where(r => r.IsEnabled);
+        _rules = FeatureGate.Has("automation-unlimited")
+            ? enabled.ToList()
+            : enabled.Take(1).ToList();
     }
 
     // ── IRC event handler ─────────────────────────────────────────────────────
@@ -78,6 +83,9 @@ public sealed class AutomationEngine
         try   // H3: never crash the app from an unhandled automation exception
         {
             if (string.IsNullOrWhiteSpace(_channel)) return;
+            // Our own sent messages come back through this event as a local echo. Reacting to
+            // them lets two rules trigger each other's replies forever.
+            if (msg.IsLocalEcho) return;
 
             foreach (var rule in _rules)
             {
@@ -92,6 +100,7 @@ public sealed class AutomationEngine
                     s.AutomationFiredCount++;
                     SettingsService.Save(s);
                     StreamEvents.RaiseUsageUpdated();
+                    StreamEvents.RaiseAutomationFired(rule.TriggerType.ToString(), msg.Username);
                 }
 
                 break;   // only the first matching rule fires per event
@@ -134,6 +143,7 @@ public sealed class AutomationEngine
                     s.AutomationFiredCount++;
                     SettingsService.Save(s);
                     StreamEvents.RaiseUsageUpdated();
+                    StreamEvents.RaiseAutomationFired("NewFollower", userName);
                 }
 
                 break;

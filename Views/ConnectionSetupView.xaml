@@ -1,0 +1,305 @@
+<UserControl x:Class="StreamCommand.Views.ConnectionSetupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource AppBackground}">
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="720" Margin="32,28,32,32">
+
+            <!-- Page header -->
+            <TextBlock Text="Setup Guide" Style="{StaticResource PageHeader}" Margin="0,0,0,4"/>
+            <TextBlock Text="Connect StreamCommand to OBS and Twitch to get started."
+                       Foreground="{DynamicResource SecondaryText}" FontSize="13" Margin="0,0,0,24"/>
+
+            <!-- ─── Connect Twitch ─────────────────────────────────────────── -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="💬" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Connect Twitch" Style="{StaticResource SectionHeader}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="TwitchStatusText" Text="Not connected"
+                                       Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                        </StackPanel>
+                        <Border x:Name="TwitchConnectedBadge" Grid.Column="1"
+                                Background="#0a2a0d" BorderBrush="#22C55E"
+                                BorderThickness="1" CornerRadius="20" Padding="10,4"
+                                VerticalAlignment="Center" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="#22C55E" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TwitchConnectedUsername" Text="Connected"
+                                           Foreground="#86EFAC" FontSize="11" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Steps -->
+                    <StackPanel Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="1" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Click the Connect Twitch button below"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <TextBlock Text="Opens Twitch in your browser to authorize StreamCommand"
+                                           Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="2" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Enter the code shown at twitch.tv/activate"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <TextBlock Text="A 6-character code will appear in this window"
+                                           Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="3" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Wait for confirmation — usually under 30 seconds"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <TextBlock Text="StreamCommand will update automatically when authorized"
+                                           Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="4" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="See the green Connected state above"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <TextBlock Text="Chat monitor, automation, and analytics are now live"
+                                           Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- User code display (shown during device flow) -->
+                    <Border x:Name="DeviceFlowPanel" Visibility="Collapsed"
+                            Background="{DynamicResource InputBackground}"
+                            BorderBrush="{DynamicResource AccentBorder}"
+                            BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Enter this code at twitch.tv/activate:"
+                                       Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,6"/>
+                            <TextBlock x:Name="DeviceCodeText" Text="------"
+                                       Foreground="{DynamicResource AccentLight}"
+                                       FontSize="28" FontWeight="Bold" FontFamily="Consolas"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="ConnectTwitchBtn" Content="Connect Twitch"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="16,8" Click="ConnectTwitch_Click"/>
+                        <Button x:Name="ReconnectTwitchBtn" Content="Reconnect"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="12,8" Margin="8,0,0,0"
+                                Visibility="Collapsed" Click="ConnectTwitch_Click"/>
+                    </StackPanel>
+
+                    <!-- Trouble expander -->
+                    <Border Margin="0,14,0,0" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Having trouble?" Foreground="{DynamicResource MutedText}"
+                                       FontSize="12" Cursor="Hand"
+                                       MouseLeftButtonUp="TwitchHelp_Toggle"/>
+                            <StackPanel x:Name="TwitchHelpPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                                <TextBlock Text="• Make sure you're logged into the correct Twitch account in your browser"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,4"/>
+                                <TextBlock Text="• The code expires in 10 minutes — click Connect again if it times out"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,4"/>
+                                <TextBlock Text="• Go to Settings to manually enter your Twitch credentials if the flow fails"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ─── Connect OBS ────────────────────────────────────────────── -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="🎥" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Connect OBS" Style="{StaticResource SectionHeader}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="OBSStatusText" Text="Not connected"
+                                       Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                        </StackPanel>
+                        <Border x:Name="OBSConnectedBadge" Grid.Column="1"
+                                Background="#0a2a0d" BorderBrush="#22C55E"
+                                BorderThickness="1" CornerRadius="20" Padding="10,4"
+                                VerticalAlignment="Center" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="#22C55E" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Connected ✓" Foreground="#86EFAC"
+                                           FontSize="11" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Steps -->
+                    <StackPanel Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="1" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Open OBS Studio" Foreground="{DynamicResource PrimaryText}"
+                                       FontSize="13" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="2" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Go to Tools → WebSocket Server Settings"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <TextBlock Text="Enable WebSocket Server and note the port (default 4455)"
+                                           Foreground="{DynamicResource MutedText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="3" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Enter port and password below, then click Connect"
+                                           Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBox x:Name="OBSPortBox" Text="4455" Width="80"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Margin="0,0,8,0" Padding="8,6"/>
+                                    <TextBox x:Name="OBSPasswordBox"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Width="180" Padding="8,6"
+                                             Text="{Binding OBSPassword, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Content="Connect OBS"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Padding="12,6" Margin="8,0,0,0"
+                                            Click="ConnectOBS_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{DynamicResource AccentMuted}"
+                                    BorderBrush="{DynamicResource AccentBorder}"
+                                    BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="4" Foreground="{DynamicResource AccentLight}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="See the green Connected state above — Live Control is now active"
+                                       Foreground="{DynamicResource PrimaryText}" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- OBS error message -->
+                    <Border x:Name="OBSErrorPanel" Visibility="Collapsed"
+                            Background="#1a0a0a" BorderBrush="{DynamicResource DangerBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,12">
+                        <TextBlock x:Name="OBSErrorText" Foreground="#FCA5A5"
+                                   FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <!-- Live preview note — the #1 source of "preview frozen" confusion -->
+                    <Border Background="{DynamicResource AccentMuted}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="3,0,0,0" CornerRadius="6"
+                            Padding="12,10" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👁" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Top"/>
+                            <StackPanel>
+                                <TextBlock Text="Using live preview?"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="12" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="The in-app live preview reads OBS's Virtual Camera, which is a separate output. You must click Start Virtual Camera in OBS (Tools menu, or the button on the main controls dock) — if it isn't running, the preview will show 'paused' even while you're live."
+                                           Foreground="{DynamicResource SecondaryText}" FontSize="12"
+                                           TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Trouble expander -->
+                    <Border BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Having trouble?" Foreground="{DynamicResource MutedText}"
+                                       FontSize="12" Cursor="Hand"
+                                       MouseLeftButtonUp="OBSHelp_Toggle"/>
+                            <StackPanel x:Name="OBSHelpPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                                <TextBlock Text="• OBS must be open and WebSocket Server must be enabled (Tools → WebSocket Server Settings)"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,4"
+                                           TextWrapping="Wrap"/>
+                                <TextBlock Text="• Leave the password blank if you didn't set one in OBS"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,4"/>
+                                <TextBlock Text="• OBS 28 or newer is required — older versions don't include WebSocket v5"
+                                           Foreground="{DynamicResource MutedText}" FontSize="12"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

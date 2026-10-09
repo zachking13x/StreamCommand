@@ -361,3 +361,28 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ── StreamCommand packaging output (audit SC-03) ─────────────────────────────
+# Generated MSIX packages and their staged payload must never be committed:
+#  - they bloat the repo (historical packages were ~250 MB of tracked binaries)
+#  - release provenance belongs in GitHub Releases / Partner Center, not in source
+#  - a *_DEVPRO.msix contains the DEBUG dev-unlock build and would hand out free Pro
+# Ignore the packaging folder, but KEEP the hand-maintained inputs (manifest + Store
+# logo assets) — those are source, not build output.
+StorePackageBuild/*
+!StorePackageBuild/AppFiles/
+StorePackageBuild/AppFiles/*
+!StorePackageBuild/AppFiles/AppxManifest.xml
+!StorePackageBuild/AppFiles/Images/
+
+*.msix
+*.msixbundle
+*.msixupload
+
+# Local publish output
+publish/
+publish-debug/
+
+# Local signing material
+*.pfx
+*.cer
+*.snk
