@@ -141,7 +141,7 @@ public partial class ClipsView : UserControl
         var path = ClipRenderer.FindFfmpeg(SettingsService.Load().FfmpegPath);
         FfmpegText.Text = path is not null
             ? $"Ready: {path}"
-            : "Not found. Clips need the free ffmpeg tool. Install it by running  winget install Gyan.FFmpeg  in a terminal, then reopen this page, or click Locate to point at ffmpeg.exe.";
+            : "Not found. Clips are made with ffmpeg, a video tool. Install it by running  winget install Gyan.FFmpeg  in a terminal, then reopen this page, or click Locate to point at ffmpeg.exe.";
         FfmpegText.SetResourceReference(TextBlock.ForegroundProperty, path is not null ? "PrimaryText" : "WarningBrush");
     }
 

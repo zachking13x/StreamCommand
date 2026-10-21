@@ -1,3 +1,5 @@
+> **SUPERSEDED by `../Listing-1.0.32/STORE_LISTING_1.0.32.md`** — kept for the 1.0.31 history and its image rules.
+
 # Stream Command 1.0.31 — listing-only resubmit (after the 10/16 10.1.4.3 report)
 
 **Package:** keep the `StreamCommand_1.0.31.0.msix` already in the submission (10.1.2.10 passed;
