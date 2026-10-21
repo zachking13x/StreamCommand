@@ -108,11 +108,19 @@ public partial class ConnectionSetupView : UserControl
             return;
         }
 
+        // Persist the PASSWORD too, not just the port. It used to be passed straight to
+        // ConnectAsync and never saved, so a password-protected OBS worked for that session
+        // and then failed to auto-connect on every later launch — which read as
+        // "I have to reconnect OBS every time I close Stream Command".
+        var password = OBSPasswordBox.Text.Trim();
         var s = SettingsService.Load();
         s.OBSWebSocketPort = port;
+        if (password.Length > 0) s.OBSWebSocketPassword = password;
         SettingsService.Save(s);
 
-        bool ok = await OBSWebSocketService.Shared.ConnectAsync("localhost", port, OBSPasswordBox.Text.Trim());
+        // Reload so we use the stored password when the box was left blank on a revisit.
+        s = SettingsService.Load();
+        bool ok = await OBSWebSocketService.Shared.ConnectAsync("localhost", port, s.OBSWebSocketPassword);
         if (!ok)
         {
             OBSErrorText.Text        = OBSWebSocketService.Shared.StatusMessage;

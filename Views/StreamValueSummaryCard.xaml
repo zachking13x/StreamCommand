@@ -28,7 +28,7 @@
                            FontSize="12" TextWrapping="Wrap" Margin="0,0,0,14"/>
 
                 <!-- CTA button -->
-                <Button x:Name="CtaButton" Content="Unlock Pro — from $6.99/mo"
+                <Button x:Name="CtaButton" Content="Unlock Pro"
                         Style="{StaticResource PrimaryButton}"
                         Padding="16,8" HorizontalAlignment="Left"
                         Click="CtaButton_Click"/>

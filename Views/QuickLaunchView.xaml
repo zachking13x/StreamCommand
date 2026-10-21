@@ -1,7 +1,8 @@
 <UserControl x:Class="StreamCommand.Views.QuickLaunchView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="{DynamicResource AppBackground}">
+             xmlns:local="clr-namespace:StreamCommand.Views"
+             Background="Transparent">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -12,18 +13,13 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,12">
-            <StackPanel>
-                <TextBlock Text="Quick Launch" Style="{StaticResource SectionHeader}" FontSize="18"/>
-                <TextBlock Text="One-click access to all your streaming tools — opens in your browser"
-                           Style="{StaticResource Muted}" Margin="0,3,0,0"/>
-            </StackPanel>
-            <Button Content="+ Add App"
-                    Style="{StaticResource PrimaryButton}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Click="ShowAddForm_Click"/>
-        </Grid>
+        <local:HudPageHeader Grid.Row="0" Margin="-20,-20,-20,16" Title="Quick Launch"
+                             Subtitle="One-click access to all your streaming tools — opens in your browser">
+            <local:HudPageHeader.Actions>
+                <Button Content="+ Add App" Style="{StaticResource PrimaryButton}" Height="40" Padding="18,0" FontWeight="Bold"
+                        Click="ShowAddForm_Click"/>
+            </local:HudPageHeader.Actions>
+        </local:HudPageHeader>
 
         <!-- Add Form -->
         <Border x:Name="AddForm"

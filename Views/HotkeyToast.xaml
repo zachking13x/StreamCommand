@@ -1,0 +1,38 @@
+<Window x:Class="StreamCommand.Views.HotkeyToast"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStyle="None"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        IsHitTestVisible="False"
+        FontFamily="{DynamicResource UiFont}"
+        Opacity="0">
+
+    <!-- Shadow on a sibling so the text keeps ClearType -->
+    <Grid Margin="24">
+        <Border CornerRadius="12" Background="{DynamicResource ModalBackground}">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.6"/>
+            </Border.Effect>
+        </Border>
+        <Border x:Name="Card" CornerRadius="12" Background="{DynamicResource ModalBackground}"
+                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5" Padding="18,12" MinWidth="300">
+            <StackPanel Orientation="Horizontal">
+                <Border x:Name="IconTile" Width="36" Height="36" CornerRadius="10" Background="{DynamicResource AccentMuted}" Margin="0,0,14,0">
+                    <Path x:Name="ToastIcon" Data="{StaticResource IconBroadcast}" Style="{StaticResource StrokeIcon}"
+                          Stroke="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="Headline" Foreground="{DynamicResource PrimaryText}" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock x:Name="Detail" Foreground="{DynamicResource SecondaryText}" FontSize="13" Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

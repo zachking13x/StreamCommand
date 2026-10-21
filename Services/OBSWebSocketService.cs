@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.WebSockets;
@@ -273,6 +273,102 @@ public class OBSWebSocketService
         catch { /* reconciliation is best-effort; the listener drives recovery */ }
     }
 
+
+    /// <summary>
+    /// Connects to OBS using the saved settings, or does nothing if OBS is already up on the
+    /// same endpoint.
+    ///
+    /// Why this exists: OBS used to connect ONLY from LiveControlView.Loaded, and the views
+    /// are built lazily — so on every launch the app sat disconnected until the user happened
+    /// to open Live Control. From the dashboard it looked like "I have to reconnect OBS every
+    /// time I close Stream Command". Same bug class as
+    /// <see cref="TwitchChatService.StartFromSettingsAsync"/>, which was fixed first.
+    ///
+    /// Auto-connect is limited to users who have connected successfully before
+    /// (<see cref="AppSettings.OBSEverConnected"/>) so someone who has never set OBS up
+    /// doesn't meet a connection error on first run. Pass <paramref name="force"/> after the
+    /// user edits the OBS port or password to apply the change immediately.
+    /// </summary>
+    public async Task<bool> StartFromSettingsAsync(bool force = false)
+    {
+#if DEBUG
+        if (Dev.StoreCapture.Active) return false;   // demo data only — never touch a real OBS
+#endif
+        var s = SettingsService.Load();
+        if (!force && !s.OBSEverConnected) return false;
+
+        bool sameEndpoint = _lastPort == s.OBSWebSocketPort && _lastPassword == s.OBSWebSocketPassword;
+        bool active       = State is OBSState.Connected or OBSState.Connecting or OBSState.Reconnecting;
+
+        if (active && sameEndpoint) return State == OBSState.Connected;
+
+        // ConnectAsync short-circuits while already Connected, so changed credentials only
+        // take effect after dropping the current socket.
+        if (active && !sameEndpoint) await DisconnectAsync();
+
+        if (await ConnectAsync("localhost", s.OBSWebSocketPort, s.OBSWebSocketPassword)) return true;
+
+        // OBS wasn't there. Start it ourselves rather than sending the streamer off to open
+        // another app — that is the entire point of this product.
+        return await TryAutoLaunchAndConnectAsync(s.OBSWebSocketPort, s.OBSWebSocketPassword);
+    }
+
+
+    /// <summary>
+    /// Starts OBS if it is not already running, then waits for its WebSocket to accept us.
+    ///
+    /// The product promise is that you do not open a million apps — so when Stream Command
+    /// needs OBS and OBS is closed, it opens it rather than telling the streamer to go do it.
+    ///
+    /// Guarded carefully:
+    ///  - never launches when an obs64 process already exists, otherwise OBS shows its own
+    ///    "OBS is already running" dialog, which is worse than doing nothing;
+    ///  - honours <see cref="AppSettings.AutoLaunchOBS"/> so it can be turned off;
+    ///  - OBS can take a while to boot, so it retries the connect rather than failing once.
+    /// </summary>
+    private async Task<bool> TryAutoLaunchAndConnectAsync(int port, string password)
+    {
+        if (!SettingsService.Load().AutoLaunchOBS) return false;
+        if (IsObsRunning()) return false;   // already up — its WebSocket just isn't reachable
+
+        SetState(OBSState.Connecting, "OBS: Starting OBS…");
+        // --minimize-to-tray: WE opened OBS, so it must not land on top of the game. The
+        // WebSocket server runs regardless of window state, so a tray-only OBS still works.
+        // Only applied to the automatic launch — clicking "OBS Studio" yourself opens it normally.
+        var (launched, message) = AppLaunchService.TryLaunch("obs", "--minimize-to-tray");
+        if (!launched)
+        {
+            SetState(OBSState.Error, $"OBS: {message}");
+            return false;
+        }
+
+        // OBS cold-starts slowly; keep retrying until it answers or we give up.
+        // OBS cold-start measured at ~42s on this machine, and it is slower on a loaded PC or
+        // first run after an update. 45s only just made it, so give it real headroom.
+        var deadline = DateTime.UtcNow.AddSeconds(120);
+        while (DateTime.UtcNow < deadline && !_userInitiatedDisconnect)
+        {
+            try { await Task.Delay(TimeSpan.FromSeconds(3)); } catch { }
+            SetState(OBSState.Connecting, "OBS: Waiting for OBS to finish starting…");
+            if (await ConnectAsync("localhost", port, password)) return true;
+        }
+
+        // Two common causes, and the user cannot guess either from "could not connect":
+        //  - OBS is showing its crash-recovery prompt and is waiting on a click;
+        //  - they chose Safe Mode, which DISABLES WebSockets entirely.
+        SetState(OBSState.Error,
+                 "OBS: Started OBS but it never answered. Check OBS for a prompt — and note that "
+               + "Safe Mode disables WebSockets. Otherwise enable Tools → WebSocket Server Settings.");
+        return false;
+    }
+
+    /// <summary>True when an OBS process already exists, whatever state its WebSocket is in.</summary>
+    private static bool IsObsRunning()
+    {
+        try { return System.Diagnostics.Process.GetProcessesByName("obs64").Length > 0; }
+        catch { return false; }
+    }
+
     public bool IsVirtualCamActive { get; private set; }
 
     public async Task StartStreamAsync()
@@ -330,11 +426,29 @@ public class OBSWebSocketService
     public async Task SetSceneAsync(string sceneName)
         => await SendRequestWithResponseAsync("SetCurrentProgramScene", new { sceneName });
 
+    /// <summary>OBS reported a mute change (any source). Raised on the socket thread — marshal to the UI.</summary>
+    public event Action<string, bool>? InputMuteChanged;   // (inputName, muted)
+
+    /// <summary>OBS switched program scene (any source). Raised on the socket thread — marshal to the UI.</summary>
+    public event Action<string>? ProgramSceneChanged;
+
     /// <summary>Mutes or unmutes an OBS audio input by name.</summary>
     public async Task SetInputMuteAsync(string inputName, bool muted)
     {
         if (State != OBSState.Connected || string.IsNullOrEmpty(inputName)) return;
         await SendRequestAsync("SetInputMute", new { inputName, inputMuted = muted });
+    }
+
+    /// <summary>
+    /// Flips an input's mute in OBS and returns the new state (null if OBS didn't answer).
+    /// Uses OBS's own toggle so a mute changed inside OBS isn't overwritten by a stale local flag.
+    /// </summary>
+    public async Task<bool?> ToggleInputMuteAsync(string inputName)
+    {
+        if (State != OBSState.Connected || string.IsNullOrEmpty(inputName)) return null;
+        var resp  = await SendRequestWithResponseAsync("ToggleInputMute", new { inputName });
+        var muted = resp?["d"]?["responseData"]?["inputMuted"]?.GetValue<bool>();
+        return muted;
     }
 
     /// <summary>Sets the volume of an OBS audio input. <paramref name="volumeMul"/> is 0.0–1.0.</summary>
@@ -413,6 +527,19 @@ public class OBSWebSocketService
                         var active = msg["d"]?["eventData"]?["outputActive"]?.GetValue<bool>() ?? false;
                         IsStreaming = active;
                         StreamingStateChanged?.Invoke(active);
+                    }
+                    // Program scene / mute changes come from OBS itself, so the UI follows a change
+                    // made by a global shortcut, by our buttons, or by the streamer inside OBS alike.
+                    else if (evType == "CurrentProgramSceneChanged")
+                    {
+                        var scene = msg["d"]?["eventData"]?["sceneName"]?.GetValue<string>();
+                        if (scene is not null) ProgramSceneChanged?.Invoke(scene);
+                    }
+                    else if (evType == "InputMuteStateChanged")
+                    {
+                        var input = msg["d"]?["eventData"]?["inputName"]?.GetValue<string>();
+                        var muted = msg["d"]?["eventData"]?["inputMuted"]?.GetValue<bool>();
+                        if (input is not null && muted is bool m) InputMuteChanged?.Invoke(input, m);
                     }
                     else if (evType == "SceneCreated" || evType == "SceneRemoved" || evType == "SceneNameChanged")
                     {
@@ -546,6 +673,11 @@ public class OBSWebSocketService
         var scenes = await GetScenesAsync();
         if (scenes.Length > 0)
             ScenesLoaded?.Invoke(scenes);
+
+        // Seed what's on program now — otherwise no tile is highlighted until the first switch.
+        var current = await SendRequestWithResponseAsync("GetCurrentProgramScene");
+        var name = current?["d"]?["responseData"]?["currentProgramSceneName"]?.GetValue<string>();
+        if (name is not null) ProgramSceneChanged?.Invoke(name);
     }
 
     private async Task FetchAudioInputsAsync()
@@ -553,6 +685,14 @@ public class OBSWebSocketService
         var (mics, outputs) = await GetAudioInputsAsync();
         if (mics.Length > 0 || outputs.Length > 0)
             AudioInputsLoaded?.Invoke((mics, outputs));
+
+        // Seed the mic's real mute state — the UI used to assume "on" even when OBS had it muted.
+        if (mics.Length > 0)
+        {
+            var resp  = await SendRequestWithResponseAsync("GetInputMute", new { inputName = mics[0] });
+            var muted = resp?["d"]?["responseData"]?["inputMuted"]?.GetValue<bool>();
+            if (muted is bool m) InputMuteChanged?.Invoke(mics[0], m);
+        }
     }
 
     private async Task<JsonNode?> SendRequestWithResponseAsync(string requestType, object? requestData = null)

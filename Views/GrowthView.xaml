@@ -1,8 +1,9 @@
 <UserControl x:Class="StreamCommand.Views.GrowthView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:StreamCommand.Views"
              xmlns:models="clr-namespace:StreamCommand.Models"
-             Background="{DynamicResource AppBackground}">
+             Background="Transparent">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -49,7 +50,14 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20" MaxWidth="1100">
+        <StackPanel>
+        <local:HudPageHeader Title="Growth" Subtitle="Track your goals and milestones">
+            <local:HudPageHeader.Actions>
+                <Button Content="+ Add Goal" Style="{StaticResource PrimaryButton}" Height="40" Padding="18,0" FontWeight="Bold"
+                        Click="AddGoal_Click"/>
+            </local:HudPageHeader.Actions>
+        </local:HudPageHeader>
+        <StackPanel Margin="24,20,24,24" MaxWidth="1400">
 
             <!-- Milestone celebration banner (shown briefly on achievement click) -->
             <Border x:Name="CelebrationBanner"
@@ -82,19 +90,6 @@
                     </StackPanel>
                 </Grid>
             </Border>
-
-            <!-- Header -->
-            <Grid Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="Growth" Style="{StaticResource SectionHeader}" FontSize="18"/>
-                    <TextBlock Text="Track your goals and milestones" Style="{StaticResource Muted}" Margin="0,3,0,0"/>
-                </StackPanel>
-                <Button Content="+ Add Goal"
-                        Style="{StaticResource PrimaryButton}"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        Click="AddGoal_Click"/>
-            </Grid>
 
             <!-- Add Goal Form (hidden by default) -->
             <Border x:Name="AddGoalForm"
@@ -175,6 +170,7 @@
                 </StackPanel>
             </Border>
 
+        </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -19,10 +19,13 @@ public partial class MainWindow : Window
 
     private static readonly HashSet<string> _validProductIds = new(StringComparer.OrdinalIgnoreCase)
     {
-        "pro_monthly", "pro_annual", "pro_lifetime"
+        // Legacy add-on tokens (grandfathered buyers) plus the paid-app cache markers.
+        "pro_monthly", "pro_annual", "pro_lifetime",
+        EntitlementService.OwnedMarker, EntitlementService.TrialMarker
     };
 
     private readonly DispatcherTimer _reminderTimer;
+    private readonly HotkeyToast _hotkeyToast;
     private readonly HashSet<string> _notifiedEventKeys = new();
     private bool _wasStreaming = false;
     private int  _sessionAutomationsFired = 0;
@@ -32,6 +35,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        StreamCommand.Services.WindowFit.Apply(this);
 
         var cached = LocalCache.LoadProState();
         if (cached != null && _validProductIds.Contains(cached))
@@ -58,6 +62,26 @@ public partial class MainWindow : Window
         };
 
         AutomationEngine.Instance.ReloadFromSettings();
+
+        // Global shortcuts — registered against this window's handle, so they live and die with it.
+        _hotkeyToast = new HotkeyToast();
+        SourceInitialized += (_, _) =>
+        {
+            GlobalHotkeyService.Instance.Attach(this);
+            if (SettingsService.Load().GlobalHotkeysEnabled)
+                GlobalHotkeyService.Instance.Enable(HotkeyBindings.Parse(SettingsService.Load().HotkeyModifier));
+        };
+        GlobalHotkeyService.Instance.Pressed += async b =>
+        {
+            // A failed OBS call must never take the app down from a key press mid-game.
+            try { await HotkeyCommands.ExecuteAsync(b); }
+            catch (Exception ex) { _hotkeyToast.Show("Shortcut failed", ex.Message, warn: true); }
+        };
+        Closed += (_, _) =>
+        {
+            GlobalHotkeyService.Instance.Dispose();
+            _hotkeyToast.Close();
+        };
 
         // OBS session counter + profile pill update
         OBSWebSocketService.Shared.StateChanged += state =>
@@ -112,6 +136,10 @@ public partial class MainWindow : Window
             }
 
             UpdateSidebarProfile(s);
+
+            // OBS connects here, not in Live Control: the views are lazy, so OBS used to
+            // stay disconnected every launch until the user opened that page.
+            _ = OBSWebSocketService.Shared.StartFromSettingsAsync();
             UpdateProBadge();
             CheckReviewBanner(s);
 
@@ -219,10 +247,34 @@ public partial class MainWindow : Window
 
     private void UpdateProBadge()
     {
-        ProBadge.Visibility = EntitlementService.IsPro ? Visibility.Visible : Visibility.Collapsed;
-        if (EntitlementService.IsPro)
-            SidebarRank.Text = "Pro";
+        var entitled = EntitlementService.IsPro;
+
+        // On a trial the user IS entitled, but they need to see the clock running —
+        // otherwise the first they know about it is the day everything locks.
+        if (entitled && EntitlementService.IsTrial)
+        {
+            var days = EntitlementService.TrialDaysRemaining;
+            ProBadgeText.Text = days switch
+            {
+                null  => "TRIAL",
+                0     => "LAST DAY",
+                1     => "1 DAY LEFT",
+                var d => $"{d} DAYS LEFT",
+            };
+            ProBadge.Visibility     = Visibility.Visible;
+            SidebarRank.Visibility  = Visibility.Collapsed;
+            UpgradeNudge.Visibility = Visibility.Visible;   // keep the buy path one click away
+            return;
+        }
+
+        ProBadgeText.Text       = "OWNED";
+        ProBadge.Visibility     = entitled ? Visibility.Visible : Visibility.Collapsed;
+        SidebarRank.Visibility  = entitled ? Visibility.Collapsed : Visibility.Visible;
+        UpgradeNudge.Visibility = entitled ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    private void UpgradeNudge_Click(object sender, RoutedEventArgs e)
+        => new ProUpgradeWindow { Owner = this }.ShowDialog();
 
     // ── Stream-end summary ────────────────────────────────────────────────────
 
@@ -358,4 +410,14 @@ public partial class MainWindow : Window
     }
 
     private static void ShowToast(string title, string body) => ToastHelper.Show(title, body);
+
+#if DEBUG
+    /// <summary>Store screenshot demo (Debug only): a connected Twitch account in the sidebar.</summary>
+    public void ApplyStoreDemo()
+    {
+        TwitchDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, "SuccessBrush");
+        TwitchPillText.Text = "novaplays";
+        TwitchPillText.SetResourceReference(TextBlock.ForegroundProperty, "PrimaryText");
+    }
+#endif
 }

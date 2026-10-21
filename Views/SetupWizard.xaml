@@ -9,6 +9,8 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
 
+    <!-- Scrolls only when WindowFit shrank the window below its design size (high display scaling). -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -21,7 +23,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,22,0,18">
 
                 <Border x:Name="Dot1" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource AccentBrush}">
-                    <TextBlock Text="1" Foreground="White" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Text="1" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <Rectangle Width="36" Height="2" Fill="{DynamicResource BorderBrush}" VerticalAlignment="Center" Margin="4,0"/>
 
@@ -55,7 +57,7 @@
             <StackPanel x:Name="Step1" Visibility="Visible" VerticalAlignment="Center">
                 <Border Width="56" Height="56" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,20"
                         Background="{DynamicResource AccentBrush}">
-                    <TextBlock Text="▶" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Text="▶" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
                 <TextBlock Text="Welcome to Stream Command" TextAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="22" FontWeight="Bold" Margin="0,0,0,8"/>
@@ -344,4 +346,5 @@
             </StackPanel>
         </Border>
     </Grid>
+    </ScrollViewer>
 </Window>

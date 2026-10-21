@@ -10,15 +10,15 @@
     <AssemblyName>StreamCommand</AssemblyName>
     <RootNamespace>StreamCommand</RootNamespace>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-    <!-- Version â€” bump these for every Store submission -->
-    <Version>1.0.28</Version>
-    <AssemblyVersion>1.0.28.0</AssemblyVersion>
-    <FileVersion>1.0.28.0</FileVersion>
+    <!-- Version — bump these for every Store submission -->
+    <Version>1.0.31</Version>
+    <AssemblyVersion>1.0.31.0</AssemblyVersion>
+    <FileVersion>1.0.31.0</FileVersion>
     <Company>Zach Kramer</Company>
     <Authors>Zach Kramer</Authors>
     <Product>Stream Command</Product>
-    <Copyright>Copyright Â© 2026 Zach Kramer</Copyright>
-    <Description>Control your whole stream without leaving your game â€” switch scenes, manage audio, and go live without alt-tabbing out.</Description>
+    <Copyright>Copyright © 2026 Zach Kramer</Copyright>
+    <Description>Control your whole stream without leaving your game — switch scenes, manage audio, and go live without alt-tabbing out.</Description>
     <!-- Produce a self-contained single-folder publish for packaging -->
     <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>false</SelfContained>

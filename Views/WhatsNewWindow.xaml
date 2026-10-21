@@ -26,7 +26,7 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Border Background="{DynamicResource AccentBrush}" CornerRadius="6"
                                 Padding="8,3" Margin="0,0,10,0">
-                            <TextBlock Text="v1.0.2" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock Text="v1.0.2" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="11" FontWeight="Bold"/>
                         </Border>
                         <TextBlock Text="May 2026  ·  Latest release"
                                    Foreground="{DynamicResource MutedText}" FontSize="12"
@@ -79,7 +79,7 @@
                         <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,3,0,3">
                             <Run Text="💰  "/>
                             <Run Text="New pricing" FontWeight="SemiBold"/>
-                            <Run Text=" — monthly $6.99, annual $49.99 (40% off), and a Launch Special lifetime tier"/>
+                            <Run Text=" — monthly, annual, and lifetime Pro plans"/>
                         </TextBlock>
                         <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,3,0,3">
                             <Run Text="⚙️  "/>
@@ -113,13 +113,53 @@
                 </StackPanel>
             </Border>
 
-            <!-- v1.0.28 (1.0.27 was never released; its notes ship here) -->
+            <!-- v1.0.31 (1.0.30 never shipped — failed certification, relabelled) -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,14" BorderBrush="{DynamicResource AccentBrush}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Border Background="{DynamicResource AccentBrush}" CornerRadius="6"
                                 Padding="8,3" Margin="0,0,10,0">
-                            <TextBlock Text="v1.0.28" Foreground="#0a0e14" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock Text="v1.0.31" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="11" FontWeight="Bold"/>
+                        </Border>
+                        <TextBlock Text="October 2026 — Opens OBS For You &amp; New Look" Foreground="{DynamicResource AccentLight}"
+                                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap">
+                            <Run Text="Opens OBS for you" FontWeight="SemiBold"/>
+                            <Run Text=" — if OBS isn't running, Stream Command starts it minimised to the tray and connects automatically. One app to open, and nothing covering your game."/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap">
+                            <Run Text="Global shortcuts" FontWeight="SemiBold"/>
+                            <Run Text=" — switch scenes (Ctrl+Shift+F1–F8), mute your mic (F10) and go live (F11, press twice) without leaving your game. Change the modifier keys in Settings."/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap">
+                            <Run Text="New look" FontWeight="SemiBold"/>
+                            <Run Text=" — a sleeker, easier-to-read design built to glance at mid-game, and every accent colour now restyles the whole app"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap">
+                            <Run Text="Fits high-scaling displays" FontWeight="SemiBold"/>
+                            <Run Text=" — on laptops set to 200% or more, windows now fit the screen and the sidebar scrolls, so nothing ends up hidden under the taskbar."/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap">
+                            <Run Text="Stays in sync with OBS" FontWeight="SemiBold"/>
+                            <Run Text=" — the current scene and mic mute state now match OBS, whoever changed them"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource PrimaryText}" FontSize="12" TextWrapping="Wrap">
+                            <Run Text="One price &amp; fixes" FontWeight="SemiBold"/>
+                            <Run Text=" — a single one-time purchase replaces subscriptions; the checklist ring, scene highlights and app exit were fixed"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- v1.0.28 (1.0.27 was never released; its notes ship here) -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14" BorderBrush="{DynamicResource BorderBrush}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource AccentDark}" CornerRadius="6"
+                                Padding="8,3" Margin="0,0,10,0">
+                            <TextBlock Text="v1.0.28" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="11" FontWeight="Bold"/>
                         </Border>
                         <TextBlock Text="October 2026 — Reliability &amp; Chat Fixes" Foreground="{DynamicResource AccentLight}"
                                    FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -155,7 +195,7 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Border Background="{DynamicResource AccentDark}" CornerRadius="6"
                                 Padding="8,3" Margin="0,0,10,0">
-                            <TextBlock Text="v1.0.26" Foreground="#0a0e14" FontSize="11" FontWeight="Bold"/>
+                            <TextBlock Text="v1.0.26" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="11" FontWeight="Bold"/>
                         </Border>
                         <TextBlock Text="June 2026 — Big Design Overhaul" Foreground="{DynamicResource AccentLight}"
                                    FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>

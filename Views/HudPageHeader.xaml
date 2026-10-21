@@ -1,0 +1,35 @@
+<UserControl x:Class="StreamCommand.Views.HudPageHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             >
+    <!-- Shared page header: overline + title + subtitle, optional actions on the right, and the
+         accent hairline. Same anatomy as the Dashboard / Live Control top bars. -->
+    <Grid MinHeight="76">
+        <Grid Margin="28,12">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="COMMAND CENTER" FontFamily="{DynamicResource CondensedFont}"
+                           Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold"/>
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{DynamicResource PrimaryText}"
+                           FontSize="26" FontWeight="Bold" Margin="0,1,0,0"/>
+                <TextBlock Text="{Binding Subtitle, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="{DynamicResource SecondaryText}"
+                           FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Subtitle, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Subtitle, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+            <ContentPresenter Content="{Binding Actions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        </Grid>
+        <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource AccentHairline}"/>
+    </Grid>
+</UserControl>

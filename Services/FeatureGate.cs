@@ -3,69 +3,47 @@ using System.Collections.Generic;
 namespace StreamCommand.Services
 {
     /// <summary>
-    /// Granular feature gating.
+    /// Feature gating under the paid-app model (v1.0.29+).
     ///
-    /// Usage:
-    ///   FeatureGate.Has("analytics-history")   → false for free users
-    ///   FeatureGate.Has("dashboard")            → true for everyone
+    /// Stream Command is a paid app with a 7-day Store trial and no add-ons, so there is no
+    /// "Pro tier" any more: if the user is entitled (owns the app, or is inside the trial)
+    /// they get EVERY feature. The Store listing promises exactly that, so this must not
+    /// hold anything back from a buyer.
     ///
-    /// Free-tier features are always available regardless of subscription.
-    /// Pro-only features require EntitlementService.IsPro == true.
-    /// Any unrecognised feature key is treated as Pro-only (safe default).
+    /// The only time a gate closes is an expired trial on a machine that never bought the
+    /// app. Even then we keep the navigation-level features working rather than bricking the
+    /// window, so the user sees a purchase prompt instead of a broken shell — a dead app
+    /// earns a one-star review, a prompt earns a sale.
     /// </summary>
     public static class FeatureGate
     {
-        /// <summary>Shorthand — true when the user has an active Pro subscription.</summary>
+        /// <summary>True when the user is entitled to the full app (owned or in trial).</summary>
         public static bool Pro => EntitlementService.IsPro;
 
-        // Features available to free users (no subscription required)
-        private static readonly HashSet<string> _freeFeatures = new(System.StringComparer.OrdinalIgnoreCase)
+        /// <summary>
+        /// Features that stay available even to an expired, unpurchased trial so the app
+        /// remains navigable and can present the buy prompt. NOT a free tier — an entitled
+        /// user gets these plus everything else.
+        /// </summary>
+        private static readonly HashSet<string> _alwaysAvailable = new(System.StringComparer.OrdinalIgnoreCase)
         {
-            "audio-meters",         // real-time OBS level meters — every streamer needs mic confirmation
             "dashboard",
-            "live-control",
-            "pre-stream",           // checklist view/read (edit is Pro)
-            "chat-monitor",
-            "automation-basic",     // up to 1 enabled rule
-            "planner-basic",        // up to 3 scheduled streams
-            "analytics-live",       // live/current session data only
-            "growth",
-            "quick-launch-basic",   // up to 5 saved apps
-            "tools-hub",
             "settings",
             "whats-new",
-        };
-
-        // Pro-only features — explicitly listed for documentation; anything not in
-        // _freeFeatures also falls through to the Pro check.
-        private static readonly HashSet<string> _proFeatures = new(System.StringComparer.OrdinalIgnoreCase)
-        {
-            "analytics-history",        // 30-day chart history
-            "automation-unlimited",     // more than 1 active rule
-            "live-preview",             // OBS Virtual Camera feed inside the app
-            "planner-unlimited",        // more than 3 scheduled streams
-            "pre-stream-edit",          // add/remove checklist items
-            "quick-launch-unlimited",   // more than 5 saved apps
-            "multi-platform",           // YouTube integration
-            "stream-alerts",            // on-screen alert overlay
-            "priority-support",
+            "tools-hub",
+            "setup-guide",
         };
 
         /// <summary>
-        /// Returns true if the current user can access <paramref name="feature"/>.
-        /// Free-tier features always return true.
-        /// Pro-only features return true only when the user has Pro.
-        /// Unknown feature keys are Pro-gated by default.
+        /// Returns true if the current user can use <paramref name="feature"/>.
+        /// Entitled users get everything; otherwise only the navigation set above.
         /// </summary>
         public static bool Has(string feature)
-        {
-            if (_freeFeatures.Contains(feature)) return true;
-            return Pro;
-        }
+            => Pro || _alwaysAvailable.Contains(feature);
 
         /// <summary>
-        /// Returns true when <paramref name="feature"/> is a Pro feature AND the user does
-        /// NOT have Pro — i.e. "should I show an upgrade prompt here?"
+        /// True when <paramref name="feature"/> is unavailable — i.e. "should I show a
+        /// purchase prompt here?".
         /// </summary>
         public static bool IsLocked(string feature) => !Has(feature);
     }

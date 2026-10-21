@@ -20,8 +20,9 @@ public partial class DashboardView : UserControl
     private DateTime         _sessionStart;
     private bool             _conversionCardShown;
 
-    // Recent events ring buffer (newest-first, max 5)
-    private readonly List<(string Emoji, string Label, string User, DateTime Time)> _recentEvents = new();
+    // Recent events ring buffer (newest-first)
+    private const int MaxRecentEvents = 8;
+    private readonly List<(string Label, string User, DateTime Time)> _recentEvents = new();
 
     public DashboardView()
     {
@@ -50,6 +51,11 @@ public partial class DashboardView : UserControl
         StreamEvents.AutomationFired      += (trigger, user) => Dispatcher.Invoke(() => AddRecentEvent(trigger, user));
 
         OBSWebSocketService.Shared.ScenesLoaded += scenes => Dispatcher.Invoke(() => BuildSceneButtons(scenes));
+        OBSWebSocketService.Shared.ProgramSceneChanged += scene => Dispatcher.BeginInvoke(() =>
+        {
+            ActiveSceneText.Text = scene;
+            HighlightActiveScene();
+        });
 
         TwitchChatService.Shared.MessageReceived += msg =>
             Dispatcher.Invoke(() => AddChatMessage(msg));
@@ -127,10 +133,14 @@ public partial class DashboardView : UserControl
 
     private void OnStreamStateChanged(bool isLive)
     {
+        SessionLabel.Text = isLive ? "ON AIR" : "SESSION";
+        SessionLabel.SetResourceReference(TextBlock.ForegroundProperty, isLive ? "OnAirText" : "LabelText");
+        OnAirDot.Visibility = isLive ? Visibility.Visible : Visibility.Collapsed;
+
         if (isLive)
         {
             _sessionStart = DateTime.UtcNow;
-            ChatLiveDot.Fill = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            ChatLiveDot.SetResourceReference(Shape.FillProperty, "LiveBrush");
 
             _sessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _sessionTimer.Tick += (_, _) =>
@@ -148,7 +158,7 @@ public partial class DashboardView : UserControl
             _sessionTimer     = null;
             SessionTimerText.Text = "—";
             LiveViewersText.Text  = "—";
-            ChatLiveDot.Fill = new SolidColorBrush(TC.MutedText);
+            ChatLiveDot.SetResourceReference(Shape.FillProperty, "MutedText");
         }
     }
 
@@ -156,20 +166,21 @@ public partial class DashboardView : UserControl
 
     private void UpdateOBSPill(OBSState state)
     {
-        var (c, label) = state switch
+        // (dot, text, fill, border) theme keys — teal reads "ready", amber "working on it",
+        // and offline is deliberately quiet rather than alarm-red: it's the normal pre-stream state.
+        var (dot, label, fg, bg, border) = state switch
         {
-            OBSState.Connected    => (Color.FromRgb(0x22, 0xC5, 0x5E), "OBS: Connected"),
-            OBSState.Connecting   => (Color.FromRgb(0xF5, 0x9E, 0x0B), "OBS: Connecting…"),
-            OBSState.Reconnecting => (Color.FromRgb(0xF5, 0x9E, 0x0B), "OBS: Reconnecting…"),
-            _                     => (Color.FromRgb(0xEF, 0x44, 0x44), "OBS: Offline")
+            OBSState.Connected    => ("AccentBrush",  "Connected",       "AccentLight",   "AccentMuted",    "AccentBorder"),
+            OBSState.Connecting   => ("WarningBrush", "Connecting…",     "WarningBrush",  "InsetBackground", "BorderLight"),
+            OBSState.Reconnecting => ("WarningBrush", "Reconnecting…",   "WarningBrush",  "InsetBackground", "BorderLight"),
+            _                     => ("MutedText",    "Not connected",   "SecondaryText", "InsetBackground", "BorderLight")
         };
-        var brush = new SolidColorBrush(c);
 
-        OBSPill.BorderBrush    = brush;
-        OBSPillDot.Fill        = brush;
-        OBSPillText.Foreground = brush;
-        OBSPillText.Text       = label;
-        OBSPill.Background     = new SolidColorBrush(Color.FromArgb(0x20, c.R, c.G, c.B));
+        OBSPillText.Text = label;
+        OBSPillDot.SetResourceReference(Shape.FillProperty, dot);
+        OBSPillText.SetResourceReference(TextBlock.ForegroundProperty, fg);
+        OBSPill.SetResourceReference(Border.BackgroundProperty, bg);
+        OBSPill.SetResourceReference(Border.BorderBrushProperty, border);
     }
 
     // ── Checklist card ────────────────────────────────────────────────────────
@@ -178,28 +189,20 @@ public partial class DashboardView : UserControl
     {
         ChecklistBadgeText.Text = total > 0 ? $"{done} / {total}" : "—";
 
-        double pct = total > 0 ? done * 100.0 / total : 0;
-        ChecklistPct.Text = $"{(int)pct}%";
+        double fraction = total > 0 ? (double)done / total : 0;
+        ChecklistPct.Text = $"{(int)(fraction * 100)}%";
 
-        // Draw ring via StrokeDashArray on a 68x68 ellipse circumference ≈ 213.6
-        const double circumference = 213.6;
-        double filled = circumference * (pct / 100.0);
-        ChecklistRing.StrokeDashArray = new DoubleCollection { filled, circumference - filled };
+        double diameter = ChecklistRing.ActualWidth > 0 ? ChecklistRing.ActualWidth : 112;
+        var (filled, gap) = ProgressRingMath.Dashes(fraction, diameter, ChecklistRing.StrokeThickness);
+        ChecklistRing.StrokeDashArray = new DoubleCollection { filled, gap };
+        // A zero-length dash with round caps still paints a dot — hide the arc at 0%.
+        ChecklistRing.Visibility = done > 0 ? Visibility.Visible : Visibility.Hidden;
 
-        if (done == total && total > 0)
-        {
-            ChecklistSubText.Text              = "✓  All tasks complete — you're ready!";
-            ChecklistRing.Stroke               = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
-            ChecklistBadge.Background          = new SolidColorBrush(Color.FromArgb(0x30, 0x22, 0xC5, 0x5E));
-            ChecklistBadge.BorderBrush         = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
-            ChecklistBadgeText.Foreground      = new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC));
-        }
-        else
-        {
-            ChecklistSubText.Text = done == 0
-                ? "Open checklist to start your pre-stream setup"
-                : $"{total - done} task{(total - done == 1 ? "" : "s")} remaining";
-        }
+        bool complete = done == total && total > 0;
+        ChecklistRing.SetResourceReference(Shape.StrokeProperty, complete ? "SuccessBrush" : "RingGradient");
+        ChecklistSubText.Text = complete ? "All tasks complete — you're ready to go live."
+                              : done == 0 ? "Open the checklist to start your pre-stream setup"
+                              : $"{total - done} task{(total - done == 1 ? "" : "s")} left before you go live";
     }
 
     private void OpenChecklist_Click(object sender, RoutedEventArgs e)
@@ -232,24 +235,69 @@ public partial class DashboardView : UserControl
         SceneConnectedContent.Visibility  = Visibility.Visible;
         ActiveSceneText.Text              = scenes.LastOrDefault() ?? "—";
 
-        foreach (var scene in scenes.Take(4))
+        foreach (var (scene, index) in scenes.Take(4).Select((s, i) => (s, i)))
         {
             var captured = scene;
             var btn = new Button
             {
-                Content   = captured,
-                Style     = (Style)FindResource("SecondaryButton"),
-                Margin    = new Thickness(0, 0, 0, 6),
-                Padding   = new Thickness(10, 7, 10, 7),
-                FontSize  = 12,
-                HorizontalContentAlignment = HorizontalAlignment.Left
+                Content   = SceneTileContent(captured, HotkeyBindings.SceneKey(index)),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Tag       = captured,
+                Style     = (Style)FindResource("SceneTile"),
+                Margin    = new Thickness(0, 0, 8, 8),
+                Padding   = new Thickness(14, 0, 14, 0),
+                Height    = 46,
             };
             btn.Click += async (_, _) =>
             {
                 await OBSWebSocketService.Shared.SetSceneAsync(captured);
                 ActiveSceneText.Text = captured;
+                HighlightActiveScene();
             };
             SceneButtonsPanel.Children.Add(btn);
+        }
+        HighlightActiveScene();
+    }
+
+    /// <summary>Scene name on the left, its global F-key on the right.</summary>
+    private UIElement SceneTileContent(string name, string key)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(new TextBlock { Text = name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        if (key.Length > 0)
+        {
+            var chip = new Border { Style = (Style)FindResource("KeyChip"), Margin = new Thickness(8, 0, 0, 0),
+                                    Child = new TextBlock { Text = key, Style = (Style)FindResource("KeyChipText") } };
+            Grid.SetColumn(chip, 1);
+            grid.Children.Add(chip);
+        }
+        return grid;
+    }
+
+    // The tile matching what's on program gets the accent edge + glow; the rest fall back to the style.
+    private void HighlightActiveScene()
+    {
+        foreach (var b in SceneButtonsPanel.Children.OfType<Button>())
+        {
+            bool active = (string?)b.Tag == ActiveSceneText.Text;
+            if (active)
+            {
+                b.SetResourceReference(Control.BorderBrushProperty, "AccentBrush");
+                b.SetResourceReference(Control.BackgroundProperty, "AccentMuted");
+                b.SetResourceReference(Control.ForegroundProperty, "AccentLight");
+                var glow = new System.Windows.Media.Effects.DropShadowEffect
+                    { ShadowDepth = 0, BlurRadius = 16, Opacity = 0.45, Color = (Color)FindResource("AccentColor") };
+                b.Effect = glow;
+            }
+            else
+            {
+                b.ClearValue(Control.BorderBrushProperty);
+                b.ClearValue(Control.BackgroundProperty);
+                b.ClearValue(Control.ForegroundProperty);
+                b.Effect = null;
+            }
         }
     }
 
@@ -266,16 +314,8 @@ public partial class DashboardView : UserControl
 
     private void AddRecentEvent(string triggerLabel, string user)
     {
-        var (emoji, color) = triggerLabel switch
-        {
-            "NewFollower"    => ("♥", Color.FromRgb(0x00, 0xC9, 0xA7)),  // teal
-            "NewSubscriber"  => ("⭐", Color.FromRgb(0x7C, 0x3A, 0xED)), // purple
-            "BitsReceived"   => ("💎", Color.FromRgb(0xF5, 0x9E, 0x0B)), // amber
-            _                => ("⚡", Color.FromRgb(0x6B, 0x80, 0x99))   // muted
-        };
-
-        _recentEvents.Insert(0, (emoji, triggerLabel, user, DateTime.Now));
-        if (_recentEvents.Count > 5) _recentEvents.RemoveAt(5);
+        _recentEvents.Insert(0, (triggerLabel, user, DateTime.Now));
+        if (_recentEvents.Count > MaxRecentEvents) _recentEvents.RemoveAt(MaxRecentEvents);
 
         RebuildRecentEventsPanel();
     }
@@ -286,51 +326,67 @@ public partial class DashboardView : UserControl
             ? Visibility.Visible : Visibility.Collapsed;
 
         RecentEventsPanel.Children.Clear();
-        foreach (var (emoji, label, user, time) in _recentEvents)
+        foreach (var (label, user, time) in _recentEvents)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var color = label switch
+            // Teal = follow, purple = sub, amber = bits — same keys as the legend in the card header.
+            var (colorKey, color, action) = label switch
             {
-                "NewFollower"   => Color.FromRgb(0x00, 0xC9, 0xA7),
-                "NewSubscriber" => Color.FromRgb(0x7C, 0x3A, 0xED),
-                "BitsReceived"  => Color.FromRgb(0xF5, 0x9E, 0x0B),
-                _               => Color.FromRgb(0x6B, 0x80, 0x99)
+                "NewFollower"   => ("FollowBrush", TC.Follow, "followed the channel"),
+                "NewSubscriber" => ("SubBrush",    TC.Sub,    "subscribed"),
+                "BitsReceived"  => ("BitsBrush",   TC.Bits,   "cheered bits"),
+                _               => ("MutedText",   TC.MutedText, label)
             };
 
+            var row = new Border
+            {
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Height          = 46,
+            };
+            row.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Child = grid;
+
+            // Dot with a soft halo so the colour reads at a glance. WPF draws the stroke inside
+            // the bounds, so 18px outer = solid core + translucent 4px ring.
             var dot = new Ellipse
             {
-                Width  = 8, Height = 8,
-                Fill   = new SolidColorBrush(color),
-                Margin = new Thickness(0, 3, 10, 0),
-                VerticalAlignment = VerticalAlignment.Top
+                Width = 18, Height = 18, Margin = new Thickness(0, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                StrokeThickness = 4,
+                Stroke = new SolidColorBrush(Color.FromArgb(0x38, color.R, color.G, color.B)),
             };
+            dot.SetResourceReference(Shape.FillProperty, colorKey);
 
-            var info = new StackPanel();
-            info.Children.Add(new TextBlock
+            var name = new TextBlock
             {
-                Text       = $"{emoji} {label.Replace("New", "").Replace("Received", "")} — {user}",
-                Foreground = new SolidColorBrush(TC.PrimaryText),
-                FontSize   = 12
-            });
+                Text = user, FontSize = 14, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 200
+            };
+            name.SetResourceReference(TextBlock.ForegroundProperty, "PrimaryText");
+
+            var what = new TextBlock { Text = action, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+            what.SetResourceReference(TextBlock.ForegroundProperty, "SecondaryText");
 
             var timestamp = new TextBlock
             {
-                Text       = time.ToString("h:mm tt"),
-                Foreground = new SolidColorBrush(TC.MutedText),
-                FontSize   = 11,
-                VerticalAlignment = VerticalAlignment.Center
+                Text = time.ToString("h:mm tt"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center
             };
+            timestamp.SetResourceReference(TextBlock.ForegroundProperty, "MutedText");
 
             Grid.SetColumn(dot, 0);
-            Grid.SetColumn(info, 1);
-            Grid.SetColumn(timestamp, 2);
-            row.Children.Add(dot);
-            row.Children.Add(info);
-            row.Children.Add(timestamp);
+            Grid.SetColumn(name, 1);
+            Grid.SetColumn(what, 2);
+            Grid.SetColumn(timestamp, 3);
+            grid.Children.Add(dot);
+            grid.Children.Add(name);
+            grid.Children.Add(what);
+            grid.Children.Add(timestamp);
 
             // Slide-in animation
             row.RenderTransform = new TranslateTransform(0, -8);
@@ -363,7 +419,7 @@ public partial class DashboardView : UserControl
 
         ChatEmptyState.Visibility = Visibility.Collapsed;
         _chatCount++;
-        ChatCountText.Text = $"({_chatCount})";
+        ChatCountText.Text = $"{_chatCount} message{(_chatCount == 1 ? "" : "s")}";
 
         // Random-ish color per user (hash-based so same user = same color each message)
         var hue = Math.Abs(msg.Username.GetHashCode()) % 360;
@@ -440,4 +496,50 @@ public partial class DashboardView : UserControl
             (byte)((g + m) * 255),
             (byte)((b + m) * 255));
     }
+
+#if DEBUG
+    // ── Store screenshot demo (Debug builds only — see Dev/StoreCapture.cs) ──────
+    // Fills the dashboard with a believable mid-stream state. Never compiled into Release.
+    public void ApplyStoreDemo()
+    {
+        UpdateOBSPill(OBSState.Connected);
+        OnStreamStateChanged(true);
+        _sessionStart          = DateTime.UtcNow - new TimeSpan(1, 42, 18);
+        SessionTimerText.Text  = "1:42:18";
+        LiveViewersText.Text   = "248";
+        FollowerCountText.Text = "12,480";
+        NewFollowersTodayText.Text = "+37";
+
+        BuildSceneButtons(["Starting Soon", "Gameplay", "Just Chatting", "Be Right Back"]);
+        ActiveSceneText.Text = "Gameplay";
+        HighlightActiveScene();
+
+        UpdateChecklistCard(5, 6);
+
+        _recentEvents.Clear();
+        var now = DateTime.Now;
+        foreach (var (label, user, minsAgo) in new[]
+        {
+            ("BitsReceived", "emberkeys", 11), ("NewFollower", "saltglass", 9), ("NewSubscriber", "driftwood_gg", 7),
+            ("NewFollower", "lunarlatch", 4), ("BitsReceived", "quietfrag", 2), ("NewFollower", "pixel_harbor", 1),
+            ("NewSubscriber", "mossbyte", 0),
+        })
+            _recentEvents.Insert(0, (label, user, now.AddMinutes(-minsAgo)));
+        RebuildRecentEventsPanel();
+
+        ChatMessagePanel.Children.Clear();
+        _chatCount = 0;
+        foreach (var (u, t) in new[]
+        {
+            ("lunarlatch", "first time catching you live!"), ("quietfrag", "CLUTCH. no way that worked"),
+            ("emberkeys", "what sens are you on?"), ("pixel_harbor", "gg that round"),
+            ("saltglass", "the scene swap was instant lol"), ("mossbyte", "6 months already, let's go"),
+            ("tarnished_ttv", "how are you switching scenes so fast"), ("driftwood_gg", "it's the hotkeys, chat"),
+            ("novaplays", "Ctrl+Shift+F-keys, never leave the game"), ("emberkeys", "need that setup"),
+            ("lunarlatch", "BRB scene was so smooth"), ("quietfrag", "one more round!!"),
+            ("saltglass", "hydrate check"), ("pixel_harbor", "GG chat, that was insane"),
+        })
+            AddChatMessage(new TwitchChatMessage { Username = u, Text = t });
+    }
+#endif
 }

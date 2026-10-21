@@ -37,7 +37,14 @@ public partial class SettingsView : UserControl
         OBSPort.Text          = _settings.OBSWebSocketPort.ToString();
 
         // Highlight whichever swatch matches the saved accent colour
-        UpdateSwatchRing(_settings.AccentColor);
+        UpdateSwatchRing(ThemeService.CurrentAccent);
+
+        _loadingHotkeys = true;
+        HotkeysToggle.IsChecked = _settings.GlobalHotkeysEnabled;
+        HotkeyModifierBox.SelectedItem = HotkeyModifierBox.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(i => (string)i.Tag == HotkeyBindings.Parse(_settings.HotkeyModifier).ToString());
+        _loadingHotkeys = false;
+        ShowHotkeyConflicts();
 
         // Pro status banner
         UpdateProStatus();
@@ -93,6 +100,10 @@ public partial class SettingsView : UserControl
         SettingsService.Save(_settings);
         LoadIntoFields();   // refresh saved-indicators and Twitch banner after save
 
+        // Apply a changed OBS port or password now — saving used to leave the old
+        // connection up, so the new credentials only took effect on the next launch.
+        _ = OBSWebSocketService.Shared.StartFromSettingsAsync(force: true);
+
         // Fail-closed reporting (audit SC-02): if encryption was unavailable the secret was
         // dropped rather than written in the clear — say so instead of claiming "Saved!".
         if (CredentialProtection.LastError != null)
@@ -101,7 +112,7 @@ public partial class SettingsView : UserControl
             CredentialWarningBanner.Visibility = Visibility.Visible;
             SaveBtn.Content = "⚠  Saved without credentials";
             await Task.Delay(4000);
-            SaveBtn.Content = "💾  Save Settings";
+            SaveBtn.Content = "Save Settings";
             return;
         }
 
@@ -110,7 +121,7 @@ public partial class SettingsView : UserControl
         SaveBtn.Content = "✓  Saved!";
         await Task.Delay(2500);
         SavedBanner.Visibility = Visibility.Collapsed;
-        SaveBtn.Content = "💾  Save Settings";
+        SaveBtn.Content = "Save Settings";
     }
 
     // ── Twitch OAuth (Device Code flow) ──────────────────────────────────────
@@ -196,12 +207,49 @@ public partial class SettingsView : UserControl
         ConnectTwitchBtn.Content   = BuildConnectBtnContent("Connect with Twitch");
     }
 
+    // ── Global shortcuts ─────────────────────────────────────────────────────
+
+    private bool _loadingHotkeys;
+
+    private void HotkeysToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingHotkeys) return;
+        bool on = HotkeysToggle.IsChecked == true;
+
+        // Saved immediately (like the accent swatches) so a later "Save Settings" can't revert it.
+        _settings.GlobalHotkeysEnabled = on;
+        SettingsService.Save(_settings);
+
+        if (on) GlobalHotkeyService.Instance.Enable(HotkeyBindings.Parse(_settings.HotkeyModifier));
+        else    GlobalHotkeyService.Instance.Disable();
+        ShowHotkeyConflicts();
+    }
+
+    private void HotkeyModifierBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingHotkeys || HotkeyModifierBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        _settings.HotkeyModifier = tag;
+        SettingsService.Save(_settings);
+        if (_settings.GlobalHotkeysEnabled)
+            GlobalHotkeyService.Instance.Enable(HotkeyBindings.Parse(tag));
+        ShowHotkeyConflicts();
+    }
+
+    private void ShowHotkeyConflicts()
+    {
+        var taken = GlobalHotkeyService.Instance.Conflicts;
+        HotkeyConflictText.Visibility = taken.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        HotkeyConflictText.Text = taken.Count > 0
+            ? $"Already used by another app, so not active: {string.Join(", ", taken.Select(b => b.Label))}. Pick different modifier keys above, or free them in that app."
+            : "";
+    }
+
     // ── Accent colour picker ─────────────────────────────────────────────────
 
     private void ColorSwatch_Click(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Border swatch) return;
-        var hex = swatch.Tag?.ToString() ?? "#6B9E85";
+        var hex = swatch.Tag?.ToString() ?? ThemeService.DefaultAccent;
 
         ThemeService.Apply(hex);
 
@@ -214,7 +262,7 @@ public partial class SettingsView : UserControl
     /// <summary>Puts the white selection ring on the active swatch and removes it from the rest.</summary>
     private void UpdateSwatchRing(string? activeHex)
     {
-        activeHex = (activeHex ?? "#6B9E85").ToUpperInvariant();
+        activeHex = ThemeService.Normalize(activeHex ?? ThemeService.DefaultAccent);
         foreach (var swatch in new[] { Swatch1, Swatch2, Swatch3, Swatch4, Swatch5 })
         {
             var tag = swatch.Tag?.ToString()?.ToUpperInvariant() ?? "";

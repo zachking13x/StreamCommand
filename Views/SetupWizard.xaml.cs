@@ -23,6 +23,7 @@ public partial class SetupWizard : Window
     public SetupWizard()
     {
         InitializeComponent();
+        StreamCommand.Services.WindowFit.Apply(this);
         _obsTest.StateChanged += state => Dispatcher.Invoke(() => OnOBSTestResult(state));
     }
 
@@ -100,12 +101,14 @@ public partial class SetupWizard : Window
         if (_step == dotStep)
         {
             dot.Background = accent;
-            if (text != null) { text.Foreground = Brushes.White; text.Text = dotStep.ToString(); }
+            // Follows the accent: dark on teal/green/orange, white on blue/pink.
+            if (text != null) { text.SetResourceReference(TextBlock.ForegroundProperty, "ButtonPrimaryFg"); text.Text = dotStep.ToString(); }
         }
         else if (_step > dotStep)
         {
             dot.Background = done;
-            if (text != null) { text.Foreground = Brushes.White; text.Text = "✓"; }
+            // Success green is light — dark text reads, white didn't (~2.3:1).
+            if (text != null) { text.SetResourceReference(TextBlock.ForegroundProperty, "SidebarBackground"); text.Text = "✓"; }
         }
         else
         {

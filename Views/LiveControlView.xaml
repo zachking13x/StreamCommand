@@ -2,362 +2,479 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:StreamCommand.Views"
-             Background="{DynamicResource AppBackground}">
+             Background="Transparent">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20" MaxWidth="1100">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-            <!-- Stream Control Banner -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,14" Padding="16,14,16,0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,14">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Live pulse indicator -->
-                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="22"
-                                Margin="0,0,14,0" VerticalAlignment="Center">
-                            <Border.Background>
-                                <SolidColorBrush x:Name="LiveIndicatorBg" Color="#1A2A22"/>
-                            </Border.Background>
-                            <TextBlock x:Name="LiveDot" Text="◉"
-                                       Foreground="{DynamicResource AccentLight}"
-                                       FontSize="20"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Border>
-
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="Stream Control" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock x:Name="StreamStatusText"
-                                       Text="Connect OBS to enable Go Live"
-                                       Style="{StaticResource Muted}"
-                                       Margin="0,3,0,0"/>
-                            <TextBlock x:Name="StreamTimerText"
-                                       Text=""
-                                       Foreground="{DynamicResource AccentLight}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       Margin="0,4,0,0"
-                                       Visibility="Collapsed"/>
-                        </StackPanel>
-
-                        <!-- Connect OBS button -->
-                        <Button x:Name="ConnectOBSButton"
-                                Grid.Column="2"
-                                Content="⚡  Connect OBS"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="14,9"
-                                Click="ConnectOBS_Click"/>
-
-                        <!-- Go Live / End Stream button -->
-                        <Button x:Name="GoLiveButton"
-                                Grid.Column="4"
-                                Content="▶   Go Live"
-                                Style="{StaticResource PrimaryButton}"
-                                Padding="22,11"
-                                FontSize="14"
-                                IsEnabled="False"
-                                Click="GoLive_Click"/>
-                    </Grid>
-
-                    <!-- OBS status strip at bottom of card -->
-                    <Border x:Name="OBSStatusBar"
-                            Margin="-16,0,-16,-14"
-                            Padding="16,6"
-                            CornerRadius="0,0,10,10"
-                            Background="#0C0C0C">
-                        <TextBlock x:Name="OBSStatusText"
-                                   Text="OBS: Not connected — click Connect OBS or enable WebSocket in OBS Tools menu"
-                                   Foreground="{DynamicResource MutedText}"
-                                   FontSize="11"/>
-                    </Border>
+        <!-- ── Top bar ── -->
+        <Grid Grid.Row="0" Height="76">
+            <Grid Margin="28,0">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="COMMAND CENTER" FontFamily="{DynamicResource CondensedFont}"
+                               Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold"/>
+                    <TextBlock Text="Live Control" Foreground="{DynamicResource PrimaryText}" FontSize="26" FontWeight="Bold" Margin="0,1,0,0"/>
                 </StackPanel>
-            </Border>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Shortcut status — set from settings in code -->
+                    <Border x:Name="HotkeyStatusChip" CornerRadius="16" Padding="12,6" Margin="0,0,12,0" BorderThickness="1"
+                            Background="{DynamicResource AccentMuted}" BorderBrush="{DynamicResource AccentBorder}">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="HotkeyStatusDot" Width="7" Height="7" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="HotkeyStatusText" Text="Global shortcuts on" Foreground="{DynamicResource AccentLight}"
+                                       FontSize="13" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Connect OBS button -->
+                    <Button x:Name="ConnectOBSButton"
+                            Content="Connect OBS"
+                            Style="{StaticResource SecondaryButton}"
+                            Height="40" Padding="16,0" FontSize="14"
+                            Click="ConnectOBS_Click"/>
+                </StackPanel>
+            </Grid>
+            <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource AccentHairline}"/>
+        </Grid>
 
-            <!-- Message Banner -->
-            <Border x:Name="LaunchMessageBorder"
-                    Visibility="Collapsed"
-                    Background="{DynamicResource AccentMuted}"
-                    BorderBrush="{DynamicResource AccentBorder}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="14,10"
-                    Margin="0,0,0,14">
-                <TextBlock x:Name="LaunchMessageText"
-                           Foreground="{DynamicResource AccentLight}"
-                           FontSize="13" TextWrapping="Wrap"/>
-            </Border>
-
-            <!-- Scene + Audio -->
-            <Grid Margin="0,0,0,14">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="24,20,24,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="14"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="360"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Scene Select -->
-                <Border Grid.Column="0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="SCENE SELECT" Style="{StaticResource Label}" Margin="0,0,0,10"/>
-                        <StackPanel x:Name="ScenePanel"/>
-                    </StackPanel>
-                </Border>
+                <!-- ═══ Left: preview + scenes ═══ -->
+                <StackPanel Grid.Column="0">
 
-                <!-- Audio Controls -->
-                <Border Grid.Column="2" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="AUDIO CONTROLS" Style="{StaticResource Label}" Margin="0,0,0,14"/>
+                    <!-- Preview slot — the preview card when OBS is up, the connect guide when it isn't -->
+                    <Grid Margin="0,0,0,16">
 
-                        <!-- Desktop Audio -->
-                        <Grid Margin="0,0,0,4">
-                            <TextBlock Text="Desktop Audio" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
-                            <TextBlock x:Name="DesktopAudioPct" Text="75%"
-                                       Foreground="{DynamicResource PrimaryText}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       HorizontalAlignment="Right"/>
-                        </Grid>
-                        <Slider x:Name="DesktopSlider"
-                                Minimum="0" Maximum="100" Value="75"
-                                Margin="0,0,0,4"
-                                ValueChanged="DesktopSlider_ValueChanged"/>
-                        <!-- Desktop level meter -->
-                        <Border x:Name="DesktopMeterTrack"
-                                Height="6" CornerRadius="3"
-                                Background="#2A2A42"
-                                Margin="0,0,0,14">
-                            <Border x:Name="DesktopMeterFill"
-                                    HorizontalAlignment="Left"
-                                    Height="5" Width="0" CornerRadius="3"
-                                    Background="#22C55E"/>
-                        </Border>
-
-                        <!-- Microphone -->
-                        <Grid Margin="0,0,0,4">
-                            <TextBlock Text="Microphone" Foreground="{DynamicResource SecondaryText}" FontSize="13"/>
-                            <TextBlock x:Name="MicAudioPct" Text="85%"
-                                       Foreground="{DynamicResource PrimaryText}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       HorizontalAlignment="Right"/>
-                        </Grid>
-                        <Slider x:Name="MicSlider"
-                                Minimum="0" Maximum="100" Value="85"
-                                Margin="0,0,0,4"
-                                ValueChanged="MicSlider_ValueChanged"/>
-                        <!-- Mic level meter -->
-                        <Border x:Name="MicMeterTrack"
-                                Height="6" CornerRadius="3"
-                                Background="#2A2A42"
-                                Margin="0,0,0,4">
-                            <Border x:Name="MicMeterFill"
-                                    HorizontalAlignment="Left"
-                                    Height="5" Width="0" CornerRadius="3"
-                                    Background="#22C55E"/>
-                        </Border>
-                        <!-- Mic silence warning — appears when streaming with no signal for 5 s -->
-                        <TextBlock x:Name="MicSilenceWarning"
-                                   Text="⚠  No mic signal detected — check your input in OBS"
-                                   Foreground="{DynamicResource DangerBrush}"
-                                   FontSize="11" TextWrapping="Wrap"
-                                   Margin="0,0,0,10"
-                                   Visibility="Collapsed"/>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="8"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Button x:Name="MicButton"
-                                    Grid.Column="0"
-                                    Content="🎙  Mic On"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Click="MicButton_Click"/>
-                            <Button x:Name="CamButton"
-                                    Grid.Column="2"
-                                    Content="📷  Cam On"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Click="CamButton_Click">
-                                <!-- BUG 6: this is a visual reminder only — cam must be toggled in OBS -->
-                                <Button.ToolTip>
-                                    <ToolTip Content="Reminder only — camera source must be toggled in OBS"/>
-                                </Button.ToolTip>
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- ── Live Preview ─────────────────────────────────────────────────
-                 Visible only while OBS is connected; hidden when disconnected. -->
-            <Border x:Name="PreviewPanel"
-                    Style="{StaticResource Card}"
-                    Margin="0,0,0,14"
-                    Visibility="Collapsed">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <TextBlock Text="LIVE PREVIEW" Style="{StaticResource Label}" VerticalAlignment="Center"/>
-                        <Button x:Name="PreviewBtn"
-                                Content="👁  Start Preview"
-                                HorizontalAlignment="Right"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="12,6"
-                                Click="StartPreview_Click"/>
-                    </Grid>
-
-                    <!-- Pro-gated area -->
-                    <Grid>
-                        <!-- Preview content — Pro users only -->
-                        <StackPanel x:Name="PreviewContent" Visibility="Collapsed">
-                            <!-- 16:9 preview with overlaid badges -->
-                            <Grid Background="#0A0A0F" Height="360">
-                                <Image x:Name="PreviewImage"
-                                       Stretch="Uniform"/>
-                                <!-- LIVE badge — top-right, visible while streaming -->
-                                <Border x:Name="LiveBadge"
-                                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Background="#CC000000" CornerRadius="4"
-                                        Padding="8,4" Margin="8"
-                                        Visibility="Collapsed">
+                        <!-- ── Live Preview ── Visible only while OBS is connected. -->
+                        <Border x:Name="PreviewPanel" Style="{StaticResource HudCard}" Padding="16" Visibility="Collapsed">
+                            <StackPanel>
+                                <Grid Margin="2,0,0,12">
                                     <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="7" Height="7" Fill="#EF4444"
-                                                 VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                        <TextBlock Text="LIVE" Foreground="White"
-                                                   FontSize="11" FontWeight="Bold"/>
+                                        <Rectangle Style="{StaticResource HudDiamond}"/>
+                                        <TextBlock Text="PROGRAM PREVIEW" Style="{StaticResource SectionLabel}" Foreground="{DynamicResource PrimaryText}"/>
                                     </StackPanel>
-                                </Border>
-                                <!-- Stalled-feed overlay — shown instead of a frozen frame -->
-                                <Border x:Name="PreviewStalledOverlay" Visibility="Collapsed"
-                                        Background="#D90A0A0F">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380" Margin="20">
-                                        <TextBlock Text="⏸" FontSize="30" HorizontalAlignment="Center"
-                                                   Foreground="{DynamicResource AccentLight}" Margin="0,0,0,10"/>
-                                        <TextBlock Text="Live preview paused"
-                                                   Foreground="{DynamicResource PrimaryText}"
-                                                   FontSize="15" FontWeight="SemiBold"
-                                                   TextAlignment="Center" Margin="0,0,0,4"/>
-                                        <TextBlock Text="No frames from OBS Virtual Camera. Make sure it's running in OBS (Tools → Start Virtual Camera)."
-                                                   Foreground="{DynamicResource SecondaryText}" FontSize="12"
-                                                   TextAlignment="Center" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                            <!-- Error shown when OBS Virtual Camera is not found -->
-                            <TextBlock x:Name="PreviewError"
-                                       Text="OBS Virtual Camera not found — in OBS click Start Virtual Camera first."
-                                       Foreground="{DynamicResource DangerBrush}"
-                                       FontSize="12" TextWrapping="Wrap"
-                                       Margin="0,8,0,0"
-                                       Visibility="Collapsed"/>
-                        </StackPanel>
+                                    <Button x:Name="PreviewBtn"
+                                            Content="Start preview"
+                                            HorizontalAlignment="Right"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="12,6"
+                                            Click="StartPreview_Click"/>
+                                </Grid>
 
-                        <!-- Locked placeholder — free users see what they're missing -->
-                        <Border x:Name="PreviewLockedState" Visibility="Collapsed"
-                                Height="360" CornerRadius="8" ClipToBounds="True">
+                                <!-- Pro-gated area, framed with HUD ticks -->
+                                <Grid>
+                                    <!-- Preview content — Pro users only -->
+                                    <StackPanel x:Name="PreviewContent" Visibility="Collapsed">
+                                        <Border x:Name="PreviewFrame" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource InsetBackground}" Height="380">
+                                            <Grid>
+                                                <Image x:Name="PreviewImage" Stretch="Uniform"/>
+                                                <!-- LIVE badge — top-right, visible while streaming -->
+                                                <Border x:Name="LiveBadge"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                        Background="{DynamicResource LiveBrush}" CornerRadius="4"
+                                                        Padding="8,3" Margin="12"
+                                                        Visibility="Collapsed">
+                                                    <TextBlock Text="ON AIR" FontFamily="{DynamicResource CondensedFont}"
+                                                               Foreground="{DynamicResource OnLiveFg}" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                                <!-- Stalled-feed overlay — shown instead of a frozen frame -->
+                                                <Border x:Name="PreviewStalledOverlay" Visibility="Collapsed"
+                                                        Background="{DynamicResource InsetBackground}">
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="380" Margin="20">
+                                                        <TextBlock Text="Live preview paused"
+                                                                   Foreground="{DynamicResource PrimaryText}"
+                                                                   FontSize="17" FontWeight="SemiBold"
+                                                                   TextAlignment="Center" Margin="0,0,0,6"/>
+                                                        <TextBlock Text="No frames from OBS Virtual Camera. Make sure it's running in OBS (Tools → Start Virtual Camera)."
+                                                                   Foreground="{DynamicResource SecondaryText}" FontSize="13"
+                                                                   TextAlignment="Center" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <!-- Error shown when OBS Virtual Camera is not found -->
+                                        <TextBlock x:Name="PreviewError"
+                                                   Text="OBS Virtual Camera not found — in OBS click Start Virtual Camera first."
+                                                   Foreground="{DynamicResource DangerBrush}"
+                                                   FontSize="13" TextWrapping="Wrap"
+                                                   Margin="0,10,0,0"
+                                                   Visibility="Collapsed"/>
+                                    </StackPanel>
+
+                                    <!-- Locked placeholder — free users see what they're missing -->
+                                    <Border x:Name="PreviewLockedState" Visibility="Collapsed"
+                                            Height="380" CornerRadius="6" ClipToBounds="True"
+                                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                            Background="{DynamicResource PreviewBackdrop}">
+                                        <Grid>
+                                            <!-- Rule-of-thirds guides: reads as "a frame goes here" -->
+                                            <Grid Opacity="0.35">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                                </Grid.RowDefinitions>
+                                                <Border Grid.Column="1" Grid.RowSpan="3" BorderBrush="{DynamicResource DecorBrush}" BorderThickness="1,0,1,0"/>
+                                                <Border Grid.Row="1" Grid.ColumnSpan="3" BorderBrush="{DynamicResource DecorBrush}" BorderThickness="0,1,0,1"/>
+                                            </Grid>
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440" Margin="20">
+                                                <Border Width="76" Height="76" CornerRadius="38" HorizontalAlignment="Center"
+                                                        Background="{DynamicResource InsetBackground}"
+                                                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect Color="{DynamicResource AccentColor}" ShadowDepth="0" BlurRadius="22" Opacity="0.5"/>
+                                                    </Border.Effect>
+                                                    <Path Data="{StaticResource IconLock}" Style="{StaticResource StrokeIconLarge}"
+                                                          Stroke="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="See your stream live inside Stream Command"
+                                                           Foreground="{DynamicResource PrimaryText}"
+                                                           FontSize="24" FontWeight="Bold"
+                                                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,18,0,8"/>
+                                                <TextBlock Text="Watch exactly what viewers see while you play — no alt-tabbing to OBS to check your scene."
+                                                           Foreground="{DynamicResource SecondaryText}" FontSize="15" LineHeight="22"
+                                                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,20"/>
+                                                <Button Style="{StaticResource PrimaryButton}" Background="{DynamicResource HeroAccentFill}"
+                                                        Height="46" Padding="22,0" HorizontalAlignment="Center"
+                                                        FontSize="15" FontWeight="Bold"
+                                                        Click="PreviewUpgrade_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="Upgrade to Pro" VerticalAlignment="Center"/>
+                                                        <Border Background="{DynamicResource ButtonPrimaryFg}" CornerRadius="4" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="PRO" FontFamily="{DynamicResource CondensedFont}" FontSize="10" Foreground="{DynamicResource AccentBrush}"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- HUD corner ticks on the frame -->
+                                    <Path Style="{StaticResource HudTick}" Data="M1,14 L1,1 L14,1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-4,-4,0,0"/>
+                                    <Path Style="{StaticResource HudTick}" Data="M0,1 L13,1 L13,14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0"/>
+                                    <Path Style="{StaticResource HudTick}" Data="M1,0 L1,13 L14,13" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-4,0,0,-4"/>
+                                    <Path Style="{StaticResource HudTick}" Data="M0,13 L13,13 L13,0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-4,-4"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ── Offline / setup guide — OBS not connected ── -->
+                        <Border x:Name="OfflineBanner" Style="{StaticResource HudCard}" Padding="40,36">
                             <Grid>
-                                <!-- Faux preview backdrop -->
-                                <Border Background="#0A0A0F"/>
-                                <Border Background="{DynamicResource AccentMuted}" Opacity="0.35"/>
-                                <!-- Overlay message -->
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="20">
-                                    <TextBlock Text="🔒" FontSize="34" HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                    <TextBlock Text="See your stream live inside Stream Command"
-                                               Foreground="{DynamicResource PrimaryText}"
-                                               FontSize="16" FontWeight="SemiBold"
-                                               TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                                    <TextBlock Text="Never alt-tab to check your scene again. Upgrade to Pro to unlock live preview."
-                                               Foreground="{DynamicResource SecondaryText}" FontSize="12"
-                                               TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16"/>
-                                    <Button Content="Upgrade to Pro"
-                                            Style="{StaticResource PrimaryButton}"
-                                            Padding="22,9" HorizontalAlignment="Center"
-                                            Click="PreviewUpgrade_Click"/>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="92" Height="92" CornerRadius="46" VerticalAlignment="Top" Margin="0,0,32,0"
+                                        Background="{DynamicResource InsetBackground}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource AccentColor}" ShadowDepth="0" BlurRadius="24" Opacity="0.45"/>
+                                    </Border.Effect>
+                                    <Path Data="{StaticResource IconPlug}" Style="{StaticResource StrokeIconLarge}"
+                                          Stroke="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Connect OBS to control your stream"
+                                               Foreground="{DynamicResource PrimaryText}" FontSize="24" FontWeight="Bold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Stream Command talks to OBS on this PC, so you can switch scenes and manage audio from inside your game."
+                                               Foreground="{DynamicResource SecondaryText}" FontSize="14" LineHeight="21"
+                                               TextWrapping="Wrap" Margin="0,8,0,18" MaxWidth="520" HorizontalAlignment="Left"/>
+                                    <!-- Steps -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Border Background="{DynamicResource AccentMuted}" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1"
+                                                CornerRadius="12" Width="24" Height="24" Margin="0,0,12,0">
+                                            <TextBlock Text="1" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="In OBS: Tools → WebSocket Server Settings → tick Enable"
+                                                   Foreground="{DynamicResource PrimaryText}" FontSize="14" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Border Background="{DynamicResource AccentMuted}" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1"
+                                                CornerRadius="12" Width="24" Height="24" Margin="0,0,12,0">
+                                            <TextBlock Text="2" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Set your port + password in Settings → OBS Connection"
+                                                   Foreground="{DynamicResource PrimaryText}" FontSize="14" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                        <Border Background="{DynamicResource AccentMuted}" BorderBrush="{DynamicResource AccentBorder}" BorderThickness="1"
+                                                CornerRadius="12" Width="24" Height="24" Margin="0,0,12,0">
+                                            <TextBlock Text="3" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Click Connect OBS — scenes load automatically"
+                                                   Foreground="{DynamicResource PrimaryText}" FontSize="14" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <!-- Inline result of a connect attempt. The only feedback used to be a
+                                         small line in the right-hand panel, far from the button the user
+                                         clicked, so a failed connect read as "nothing happened". -->
+                                    <Border x:Name="OBSConnectFeedback" Visibility="Collapsed"
+                                            Background="{DynamicResource AccentMuted}"
+                                            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="3,0,0,0"
+                                            CornerRadius="8" Padding="14,11" Margin="0,0,0,16" HorizontalAlignment="Left"
+                                            MaxWidth="520">
+                                        <TextBlock x:Name="OBSConnectFeedbackText" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource PrimaryText}" FontSize="13"/>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="ConnectOBSButtonCard" Content="Connect OBS"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Height="44" Padding="20,0" FontSize="14" FontWeight="Bold"
+                                                Margin="0,0,12,0"
+                                                Click="ConnectOBS_Click"/>
+                                        <Button Content="Open Setup Guide"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="44" Padding="20,0" FontSize="14"
+                                                Click="GoToOBSSettings_Click"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </Grid>
-                </StackPanel>
-            </Border>
 
-            <!-- Open Stream App -->
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="OPEN STREAM APP" Style="{StaticResource Label}" Margin="0,0,0,12"/>
-                    <UniformGrid Columns="2" Rows="2">
-                        <Button Tag="obs"           Content="🎬  OBS Studio"       Style="{StaticResource SecondaryButton}" Margin="0,0,6,6" Padding="0,14" Click="LaunchApp_Click">
-                            <Button.ToolTip>Open Broadcaster Software — installed on your PC</Button.ToolTip>
-                        </Button>
-                        <Button Tag="streamlabs"    Content="🎮  Streamlabs"        Style="{StaticResource SecondaryButton}" Margin="6,0,0,6" Padding="0,14" Click="LaunchApp_Click"/>
-                        <Button Tag="twitch-studio" Content="🟣  Twitch Studio"     Style="{StaticResource SecondaryButton}" Margin="0,6,6,0" Padding="0,14" Click="LaunchApp_Click"/>
-                        <Button Tag="xsplit"        Content="✖  XSplit Broadcaster" Style="{StaticResource SecondaryButton}" Margin="6,6,0,0" Padding="0,14" Click="LaunchApp_Click"/>
-                    </UniformGrid>
-                </StackPanel>
-            </Border>
+                    <!-- Scene Select -->
+                    <Border Style="{StaticResource HudCard}" Padding="20,18" Margin="0,0,0,16">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,14">
+                                <StackPanel Orientation="Horizontal">
+                                    <Rectangle Style="{StaticResource HudDiamond}"/>
+                                    <TextBlock Text="SCENES" Style="{StaticResource SectionLabel}" Foreground="{DynamicResource PrimaryText}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <TextBlock Text="From any game:" Foreground="{DynamicResource SecondaryText}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Style="{StaticResource KeyChip}">
+                                        <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F1 – F8"/></TextBlock>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                            <UniformGrid x:Name="ScenePanel" Columns="3" Margin="0,0,-10,-10"/>
+                        </StackPanel>
+                    </Border>
 
-            <!-- Offline / Setup Guide Banner -->
-            <Border x:Name="OfflineBanner"
-                    Background="{DynamicResource AccentMuted}"
-                    BorderBrush="{DynamicResource AccentBrush}"
-                    BorderThickness="3,0,0,0"
-                    CornerRadius="10"
-                    Padding="20,16"
-                    Margin="0,14,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="160"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Connect OBS to enable stream control"
+                    <!-- Open Stream App -->
+                    <Border Style="{StaticResource HudCard}" Padding="20,18">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <Rectangle Style="{StaticResource HudDiamond}"/>
+                                <TextBlock Text="OPEN STREAM APP" Style="{StaticResource SectionLabel}" Foreground="{DynamicResource PrimaryText}"/>
+                            </StackPanel>
+                            <UniformGrid Columns="4">
+                                <Button Tag="obs"           Content="OBS Studio"          Style="{StaticResource SceneTile}" Padding="14,0" Margin="0,0,8,0" Height="44" Click="LaunchApp_Click">
+                                    <Button.ToolTip>Open Broadcaster Software — installed on your PC</Button.ToolTip>
+                                </Button>
+                                <Button Tag="streamlabs"    Content="Streamlabs"          Style="{StaticResource SceneTile}" Padding="14,0" Margin="0,0,8,0" Height="44" Click="LaunchApp_Click"/>
+                                <Button Tag="twitch-studio" Content="Twitch Studio"       Style="{StaticResource SceneTile}" Padding="14,0" Margin="0,0,8,0" Height="44" Click="LaunchApp_Click"/>
+                                <Button Tag="xsplit"        Content="XSplit Broadcaster"  Style="{StaticResource SceneTile}" Padding="14,0" Height="44" Click="LaunchApp_Click"/>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ═══ Right: go live + audio ═══ -->
+                <StackPanel Grid.Column="2">
+
+                    <!-- Stream control -->
+                    <Grid Margin="0,0,0,16">
+                        <Border Style="{StaticResource HudCard}" CornerRadius="6" Padding="20,18,20,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Live indicator -->
+                                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="20" Margin="0,0,12,0" VerticalAlignment="Center">
+                                        <Border.Background>
+                                            <SolidColorBrush x:Name="LiveIndicatorBg" Color="#0f2a2a"/>
+                                        </Border.Background>
+                                        <TextBlock x:Name="LiveDot" Text="●"
+                                                   Foreground="{DynamicResource AccentLight}"
+                                                   FontSize="16"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="STREAM" Style="{StaticResource SectionLabel}" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Left"/>
+                                        <TextBlock x:Name="StreamStatusText"
+                                                   Text="Connect OBS to enable Go Live"
+                                                   Foreground="{DynamicResource SecondaryText}" FontSize="13"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock x:Name="StreamTimerText"
+                                           Text=""
+                                           Style="{StaticResource MetricValue}" FontSize="38" FontWeight="Bold"
+                                           Margin="0,0,0,12"
+                                           Visibility="Collapsed">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect Color="#FF5A65" ShadowDepth="0" BlurRadius="16" Opacity="0.4"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+
+                                <!-- Go Live / End Stream button -->
+                                <Button x:Name="GoLiveButton"
+                                        Content="GO LIVE"
+                                        Style="{StaticResource HeroGoLiveButton}"
+                                        IsEnabled="False"
+                                        Click="GoLive_Click">
+                                    <Button.Effect>
+                                        <DropShadowEffect Color="{DynamicResource AccentColor}" ShadowDepth="0" BlurRadius="26" Opacity="0.4"/>
+                                    </Button.Effect>
+                                </Button>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                                    <TextBlock Text="In-game:" Foreground="{DynamicResource SecondaryText}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Style="{StaticResource KeyChip}">
+                                        <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F11"/></TextBlock>
+                                    </Border>
+                                    <TextBlock Text="twice" Foreground="{DynamicResource SecondaryText}" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                </StackPanel>
+
+                                <!-- OBS status strip at bottom of card -->
+                                <Border x:Name="OBSStatusBar"
+                                        Margin="-20,16,-20,0"
+                                        Padding="20,10"
+                                        CornerRadius="0,0,5,5"
+                                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                                        Background="{DynamicResource InsetBackground}">
+                                    <TextBlock x:Name="OBSStatusText"
+                                               Text="OBS: Not connected — click Connect OBS or enable WebSocket in OBS Tools menu"
+                                               Foreground="{DynamicResource SecondaryText}"
+                                               FontSize="12" TextWrapping="Wrap"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                        <Path Style="{StaticResource HudTick}" Data="M1,14 L1,1 L14,1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-3,-3,0,0"/>
+                        <Path Style="{StaticResource HudTick}" Data="M0,1 L13,1 L13,14" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0"/>
+                        <Path Style="{StaticResource HudTick}" Data="M1,0 L1,13 L14,13" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-3,0,0,-3"/>
+                        <Path Style="{StaticResource HudTick}" Data="M0,13 L13,13 L13,0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"/>
+                    </Grid>
+
+                    <!-- Message Banner -->
+                    <Border x:Name="LaunchMessageBorder"
+                            Visibility="Collapsed"
+                            Background="{DynamicResource AccentMuted}"
+                            BorderBrush="{DynamicResource AccentBorder}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="14,10"
+                            Margin="0,0,0,16">
+                        <TextBlock x:Name="LaunchMessageText"
                                    Foreground="{DynamicResource AccentLight}"
-                                   FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <!-- Steps -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
-                                    Width="18" Height="18" Margin="0,0,8,0">
-                                <TextBlock Text="1" Foreground="White" FontSize="10" FontWeight="Bold"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="In OBS: Tools → WebSocket Server Settings → tick Enable"
-                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
-                                    Width="18" Height="18" Margin="0,0,8,0">
-                                <TextBlock Text="2" Foreground="White" FontSize="10" FontWeight="Bold"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="Set your port + password in Settings → OBS Connection"
-                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Border Background="{DynamicResource AccentBrush}" CornerRadius="10"
-                                    Width="18" Height="18" Margin="0,0,8,0">
-                                <TextBlock Text="3" Foreground="White" FontSize="10" FontWeight="Bold"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <TextBlock Text="Click ⚡ Connect OBS above — scenes load automatically"
-                                       Foreground="{DynamicResource SecondaryText}" FontSize="12"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Open Setup Guide →"
-                            Style="{StaticResource SecondaryButton}"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Right"
-                            Padding="14,8"
-                            Click="GoToOBSSettings_Click"/>
-                </Grid>
-            </Border>
+                                   FontSize="13" TextWrapping="Wrap"/>
+                    </Border>
 
-        </StackPanel>
-    </ScrollViewer>
+                    <!-- Audio Controls -->
+                    <Border Style="{StaticResource HudCard}" Padding="20,18">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <Rectangle Style="{StaticResource HudDiamond}"/>
+                                <TextBlock Text="AUDIO" Style="{StaticResource SectionLabel}" Foreground="{DynamicResource PrimaryText}"/>
+                            </StackPanel>
+
+                            <!-- Microphone first: it's the one that ruins a stream when it's wrong -->
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="Microphone" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="MicAudioPct" Text="85%"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                            <!-- Mic level meter -->
+                            <Border x:Name="MicMeterTrack"
+                                    Height="10" CornerRadius="5"
+                                    Background="{DynamicResource InsetBackground}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    Margin="0,0,0,8">
+                                <Border x:Name="MicMeterFill"
+                                        HorizontalAlignment="Left"
+                                        Width="0" CornerRadius="4"
+                                        Background="{DynamicResource AccentBrush}"/>
+                            </Border>
+                            <Slider x:Name="MicSlider"
+                                    Minimum="0" Maximum="100" Value="85"
+                                    Margin="0,0,0,6"
+                                    AutomationProperties.Name="Microphone volume"
+                                    ValueChanged="MicSlider_ValueChanged"/>
+                            <!-- Mic silence warning — appears when streaming with no signal for 5 s -->
+                            <TextBlock x:Name="MicSilenceWarning"
+                                       Text="No mic signal detected — check your input in OBS"
+                                       Foreground="{DynamicResource DangerBrush}"
+                                       FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Margin="0,2,0,6"
+                                       Visibility="Collapsed"/>
+
+                            <!-- Desktop Audio -->
+                            <Grid Margin="0,12,0,6">
+                                <TextBlock Text="Desktop audio" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="DesktopAudioPct" Text="75%"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                            <!-- Desktop level meter -->
+                            <Border x:Name="DesktopMeterTrack"
+                                    Height="10" CornerRadius="5"
+                                    Background="{DynamicResource InsetBackground}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    Margin="0,0,0,8">
+                                <Border x:Name="DesktopMeterFill"
+                                        HorizontalAlignment="Left"
+                                        Width="0" CornerRadius="4"
+                                        Background="{DynamicResource AccentBrush}"/>
+                            </Border>
+                            <Slider x:Name="DesktopSlider"
+                                    Minimum="0" Maximum="100" Value="75"
+                                    Margin="0,0,0,18"
+                                    AutomationProperties.Name="Desktop audio volume"
+                                    ValueChanged="DesktopSlider_ValueChanged"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="MicButton"
+                                        Grid.Column="0"
+                                        Content="Mic on"
+                                        Style="{StaticResource SceneTile}" Padding="14,0"
+                                        Height="44" FontSize="14"
+                                        Click="MicButton_Click"/>
+                                <Button x:Name="CamButton"
+                                        Grid.Column="2"
+                                        Content="Cam on"
+                                        Style="{StaticResource SceneTile}" Padding="14,0"
+                                        Height="44" FontSize="14"
+                                        Click="CamButton_Click">
+                                    <!-- BUG 6: this is a visual reminder only — cam must be toggled in OBS -->
+                                    <Button.ToolTip>
+                                        <ToolTip Content="Reminder only — camera source must be toggled in OBS"/>
+                                    </Button.ToolTip>
+                                </Button>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <TextBlock Text="Mute mic in-game:" Foreground="{DynamicResource SecondaryText}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <Border Style="{StaticResource KeyChip}">
+                                    <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F10"/></TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

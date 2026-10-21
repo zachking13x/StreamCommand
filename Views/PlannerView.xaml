@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:StreamCommand.Models"
              xmlns:local="clr-namespace:StreamCommand.Views"
-             Background="{DynamicResource AppBackground}">
+             Background="Transparent">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -93,23 +93,19 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="Stream Planner" Style="{StaticResource SectionHeader}" FontSize="18"/>
-                <TextBlock Text="Schedule and manage upcoming streams"
-                           Style="{StaticResource Muted}" Margin="0,3,0,0"/>
-                <!-- Free tier limit notice (code-behind shows/hides) -->
-                <local:ProGateBanner x:Name="PlannerFreeBanner"
-                                     FeatureLabel="🔒  Free plan: 3 scheduled streams max — unlock unlimited with Pro"
-                                     Margin="0,8,0,0"
-                                     Visibility="Collapsed"/>
-            </StackPanel>
-            <Button Content="+ Schedule Stream"
-                    Style="{StaticResource PrimaryButton}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Click="AddStream_Click"/>
-        </Grid>
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <local:HudPageHeader Margin="-20,-20,-20,0" Title="Stream Planner" Subtitle="Schedule and manage upcoming streams">
+                <local:HudPageHeader.Actions>
+                    <Button Content="+ Schedule Stream" Style="{StaticResource PrimaryButton}" Height="40" Padding="18,0" FontWeight="Bold"
+                            Click="AddStream_Click"/>
+                </local:HudPageHeader.Actions>
+            </local:HudPageHeader>
+            <!-- Free tier limit notice (code-behind shows/hides) -->
+            <local:ProGateBanner x:Name="PlannerFreeBanner"
+                                 FeatureLabel="🔒  Free plan: 3 scheduled streams max — unlock unlimited with Pro"
+                                 Margin="0,16,0,0"
+                                 Visibility="Collapsed"/>
+        </StackPanel>
 
         <!-- Add Form -->
         <Border x:Name="AddForm"

@@ -11,7 +11,13 @@ public partial class StreamValueSummaryCard : UserControl
     public StreamValueSummaryCard()
     {
         InitializeComponent();
-        Loaded += (_, _) => Populate();
+        Loaded += async (_, _) =>
+        {
+            Populate();
+            // Price comes from the Store (localized) rather than a hardcoded amount.
+            var price = await StorePricingService.GetAppPriceAsync();
+            CtaButton.Content = $"Keep Stream Command — {price} once";
+        };
     }
 
     private void Populate()

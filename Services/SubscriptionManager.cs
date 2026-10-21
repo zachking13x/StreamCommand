@@ -1,23 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Threading.Tasks;
 using Windows.Services.Store;
 using WinRT.Interop;
 
 namespace StreamCommand.Services
 {
+    /// <summary>
+    /// Buys the app itself.
+    ///
+    /// PRICING MODEL (v1.0.29+): Stream Command is a paid app ($7.99 one-time) with a 7-day
+    /// Store free trial and NO add-ons. "Buying" therefore means purchasing the app's own
+    /// Store product - the full licence that turns a trial into ownership - not an in-app
+    /// add-on. The three subscription add-ons this class used to sell (pro_monthly,
+    /// pro_annual, pro_lifetime) are retired and stop-selling; licences already bought are
+    /// still honoured by EntitlementService.LegacyProductIds.
+    /// </summary>
     public static class SubscriptionManager
     {
-        private static StoreContext? _context;
+        /// <summary>
+        /// The app's own Store ID, used when the Store cannot name the product dynamically.
+        /// Same ID as the Store listing and review URL.
+        /// </summary>
+        public const string AppStoreId = "9PCVKFCX60C1";
 
-        // Map the human-readable InAppOfferToken → Microsoft Store ID (9NXXXXX).
-        // RequestPurchaseAsync requires the Store ID, NOT the InAppOfferToken.
-        private static readonly Dictionary<string, string> _tokenToStoreId = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["pro_monthly"]  = "9P278M24CMND",
-            ["pro_annual"]   = "9ND71MP15Q0C",
-            ["pro_lifetime"] = "9N5XMTJ071XR",
-        };
+        private static StoreContext? _context;
 
         public static void Initialize(IntPtr hwnd)
         {
@@ -25,25 +31,36 @@ namespace StreamCommand.Services
             InitializeWithWindow.Initialize(_context, hwnd);
         }
 
-        public static async Task<bool> PurchaseAsync(string productToken)
+        /// <summary>
+        /// Shows the Store purchase dialog for the full app licence. On success the
+        /// entitlement is refreshed so every gate opens without a restart.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Initialize was never called.</exception>
+        public static async Task<StorePurchaseStatus> PurchaseAppAsync()
         {
             if (_context == null)
                 throw new InvalidOperationException("SubscriptionManager not initialized with window handle.");
 
-            // Resolve InAppOfferToken → Store ID; pass through if already a Store ID
-            var storeId = _tokenToStoreId.TryGetValue(productToken, out var mapped) ? mapped : productToken;
+            // Prefer the Store's own product id for this app; fall back to the known one so a
+            // transient catalog hiccup never blocks a sale.
+            string storeId = AppStoreId;
+            try
+            {
+                var product = await _context.GetStoreProductForCurrentAppAsync();
+                if (!string.IsNullOrEmpty(product?.Product?.StoreId))
+                    storeId = product.Product.StoreId;
+            }
+            catch { /* fall back to AppStoreId */ }
 
             StorePurchaseResult result = await _context.RequestPurchaseAsync(storeId);
 
-            if (result.Status == StorePurchaseStatus.Succeeded ||
-                result.Status == StorePurchaseStatus.AlreadyPurchased)
+            if (result.Status is StorePurchaseStatus.Succeeded or StorePurchaseStatus.AlreadyPurchased)
             {
                 await EntitlementService.RefreshAsync();
                 LocalCache.SaveProState(EntitlementService.ActiveProductId);
-                return true;
             }
 
-            return false;
+            return result.Status;
         }
     }
 }

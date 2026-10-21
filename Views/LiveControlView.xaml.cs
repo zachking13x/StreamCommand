@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using StreamCommand.Services;
+using TC = StreamCommand.Services.ThemeColors;
 
 namespace StreamCommand.Views;
 
@@ -28,9 +29,11 @@ public partial class LiveControlView : UserControl
     private DateTime _lastMicSignalTime = DateTime.MinValue;
 
     // Cached meter brushes — created once, reused at 20 Hz to avoid GC pressure
-    private static readonly SolidColorBrush _meterGreen = new(Color.FromRgb(0x22, 0xC5, 0x5E));
-    private static readonly SolidColorBrush _meterAmber = new(Color.FromRgb(0xF5, 0x9E, 0x0B));
-    private static readonly SolidColorBrush _meterRed   = new(Color.FromRgb(0xEF, 0x44, 0x44));
+    // Healthy level = the current accent; looked up per update so an accent change in Settings
+    // applies immediately (a static brush captured whatever accent was active at first load).
+    private Brush MeterOk => (Brush)FindResource("AccentBrush");
+    private static readonly SolidColorBrush _meterAmber = new(TC.Warning);
+    private static readonly SolidColorBrush _meterRed   = new(TC.Danger);
 
     // Stream timer
     private readonly DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -96,11 +99,43 @@ public partial class LiveControlView : UserControl
         _streamTimer.Tick += (_, _) =>
         {
             var elapsed = DateTime.Now - _streamStartTime;
-            StreamTimerText.Text = $"⏱  {(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+            StreamTimerText.Text = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         };
 
         // Try auto-connect on load (works if OBS is already open with no password)
-        Loaded += async (_, _) => await TryConnectOBSAsync();
+        Loaded += async (_, _) =>
+        {
+            // Seed from the CURRENT OBS state before anything else. This view is created
+            // lazily, so when OBS connects at app startup the Connected event fires before
+            // the view exists — it then showed its default "not connected" layout while
+            // OBS was actually connected, and Connect did nothing because ConnectAsync
+            // short-circuits when already connected.
+            OnOBSStateChanged(_obs.State);
+            UpdateHotkeyStatus();   // may have been toggled in Settings since last visit
+            await TryConnectOBSAsync();
+        };
+
+        // Keep the preview 16:9 like the stream it shows (a fixed 380px height letterboxed it on
+        // wide windows), capped so the scenes stay on screen.
+        PreviewPanel.SizeChanged += (_, _) =>
+        {
+            var h = Math.Clamp((PreviewPanel.ActualWidth - 32) * 9 / 16, 300, 600);
+            PreviewFrame.Height = h;
+            PreviewLockedState.Height = h;
+        };
+
+        // Follow OBS for program scene + mic mute, whoever changed them (a global shortcut,
+        // these buttons, or the streamer clicking in OBS).
+        _obs.ProgramSceneChanged += scene => Dispatcher.BeginInvoke(() =>
+        {
+            _activeSceneName = scene;
+            RefreshSceneButtons();
+        });
+        _obs.InputMuteChanged += (input, muted) => Dispatcher.BeginInvoke(() =>
+        {
+            if (string.IsNullOrEmpty(_detectedMicName) || input == _detectedMicName)
+                SetMicUi(!muted);
+        });
 
         // Audio level meters — subscribe to the ~20 Hz push event from OBS
         _audioLevelsHandler = levels =>
@@ -126,16 +161,52 @@ public partial class LiveControlView : UserControl
     // ── OBS Connection ───────────────────────────────────────────────────────
 
     private async void ConnectOBS_Click(object sender, RoutedEventArgs e)
-        => await TryConnectOBSAsync();
+        => await TryConnectOBSAsync(showFeedback: true);
 
-    private async System.Threading.Tasks.Task TryConnectOBSAsync()
+    private async System.Threading.Tasks.Task TryConnectOBSAsync(bool showFeedback = false)
     {
-        var s = SettingsService.Load();
-        ConnectOBSButton.IsEnabled = false;
-        await _obs.ConnectAsync("localhost", s.OBSWebSocketPort, s.OBSWebSocketPassword);
-        ConnectOBSButton.IsEnabled = true;
-    }
+#if DEBUG
+        if (Dev.StoreCapture.Active) return;   // demo data only — never touch a real OBS
+#endif
+        // Already connected: ConnectAsync would return instantly, so just resync this view.
+        // Without this the button looked dead whenever the UI had drifted out of sync.
+        if (_obs.State == OBSState.Connected)
+        {
+            OnOBSStateChanged(OBSState.Connected);
+            return;
+        }
 
+
+        // Only narrate a connect the USER asked for. The silent auto-connect at launch must
+        // not flash an error card at someone who simply doesn't have OBS open yet.
+        if (showFeedback) ShowOBSFeedback("Connecting to OBS…", isError: false);
+
+        ConnectOBSButton.IsEnabled     = false;
+        ConnectOBSButtonCard.IsEnabled = false;
+        // force: also starts OBS if it is closed, instead of just failing to reach it
+        bool ok = await _obs.StartFromSettingsAsync(force: true);
+        ConnectOBSButton.IsEnabled     = true;
+        ConnectOBSButtonCard.IsEnabled = true;
+
+        if (!showFeedback) return;
+
+        if (ok)
+        {
+            OBSConnectFeedback.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // _obs.StatusMessage already distinguishes "is OBS open?" from a rejected password;
+        // surface it next to the button instead of only in the side panel.
+        ShowOBSFeedback(_obs.StatusMessage.Replace("OBS: ", ""), isError: true);
+    }
+    private void ShowOBSFeedback(string message, bool isError)
+    {
+        OBSConnectFeedbackText.Text = message;
+        OBSConnectFeedbackText.Foreground = (Brush)FindResource(isError ? "DangerBrush" : "PrimaryText");
+        OBSConnectFeedback.BorderBrush    = (Brush)FindResource(isError ? "DangerBrush" : "AccentBrush");
+        OBSConnectFeedback.Visibility     = Visibility.Visible;
+    }
     private void OnOBSStateChanged(OBSState state)
     {
         OBSStatusText.Text = _obs.StatusMessage;
@@ -144,11 +215,13 @@ public partial class LiveControlView : UserControl
         {
             case OBSState.Connected:
                 OBSStatusText.Foreground = (Brush)FindResource("SuccessBrush");
-                ConnectOBSButton.Content  = "✓  OBS Connected";
+                ConnectOBSButton.Content  = "OBS connected";
                 ConnectOBSButton.IsEnabled = false;
+                ConnectOBSButtonCard.IsEnabled = false;
                 GoLiveButton.IsEnabled    = true;
                 StreamStatusText.Text     = "OBS connected — ready to go live";
                 OfflineBanner.Visibility  = Visibility.Collapsed;
+                OBSConnectFeedback.Visibility = Visibility.Collapsed;
                 PreviewPanel.Visibility   = Visibility.Visible;
                 ApplyPreviewProGate();
                 StreamEvents.RaiseOBSState(true);
@@ -159,11 +232,23 @@ public partial class LiveControlView : UserControl
                 ConnectOBSButton.Content  = "Connecting…";
                 break;
 
+            // Reconnecting was added to the enum when auto-reconnect landed but never handled
+            // here, so the switch fell through and left the button DISABLED still reading
+            // "OBS connected" while the panel said otherwise — clicking it did nothing.
+            case OBSState.Reconnecting:
+                OBSStatusText.Foreground   = (Brush)FindResource("MutedText");
+                ConnectOBSButton.Content   = "Reconnecting…";
+                ConnectOBSButton.IsEnabled = true;    // let the user force a retry
+                ConnectOBSButtonCard.IsEnabled = true;
+                GoLiveButton.IsEnabled     = false;
+                break;
+
             case OBSState.Error:
             case OBSState.Disconnected:
                 OBSStatusText.Foreground = (Brush)FindResource("DangerBrush");
-                ConnectOBSButton.Content  = "⚡  Connect OBS";
+                ConnectOBSButton.Content  = "Connect OBS";
                 ConnectOBSButton.IsEnabled = true;
+                ConnectOBSButtonCard.IsEnabled = true;
                 GoLiveButton.IsEnabled    = false;
                 OfflineBanner.Visibility  = Visibility.Visible;
                 PreviewPanel.Visibility   = Visibility.Collapsed;
@@ -242,10 +327,10 @@ public partial class LiveControlView : UserControl
 
     private void SetLiveUI()
     {
-        GoLiveButton.Content    = "⏹   End Stream";
-        GoLiveButton.Style      = (Style)FindResource("LiveButton");
-        StreamStatusText.Text   = "🔴  You are LIVE — broadcasting now";
-        LiveIndicatorBg.Color   = Color.FromRgb(0x7F, 0x1D, 0x1D);
+        GoLiveButton.Content    = "END STREAM";
+        GoLiveButton.Style      = (Style)FindResource("HeroEndStreamButton");
+        StreamStatusText.Text   = "You are live — broadcasting now";
+        LiveIndicatorBg.Color   = ((SolidColorBrush)FindResource("OnAirMuted")).Color;
         LiveDot.Foreground      = (Brush)FindResource("LiveBrush");
         OfflineBanner.Visibility = Visibility.Collapsed;
 
@@ -259,12 +344,14 @@ public partial class LiveControlView : UserControl
 
     private void ResetLiveUI()
     {
-        GoLiveButton.Content    = "▶   Go Live";
-        GoLiveButton.Style      = (Style)FindResource("PrimaryButton");
-        StreamStatusText.Text   = "OBS connected — ready to go live";
-        LiveIndicatorBg.Color   = Color.FromRgb(0x1A, 0x2A, 0x22);   // UI7: sage dark, not purple
+        GoLiveButton.Content    = "GO LIVE";
+        GoLiveButton.Style      = (Style)FindResource("HeroGoLiveButton");
+        bool obsUp = _obs.State == OBSState.Connected;
+        StreamStatusText.Text   = obsUp ? "OBS connected — ready to go live" : "Connect OBS to enable Go Live";
+        LiveIndicatorBg.Color   = ((SolidColorBrush)FindResource("AccentMuted")).Color;
         LiveDot.Foreground      = (Brush)FindResource("AccentLight");
-        OfflineBanner.Visibility = Visibility.Visible;
+        // The connect guide shares the preview slot — only bring it back if OBS is actually down.
+        OfflineBanner.Visibility = obsUp ? Visibility.Collapsed : Visibility.Visible;
 
         // Stop stream timer
         _streamTimer.Stop();
@@ -283,17 +370,18 @@ public partial class LiveControlView : UserControl
     private void BuildSceneButtons(string[] scenes)
     {
         ScenePanel.Children.Clear();
-        foreach (var name in scenes)
+        for (int i = 0; i < scenes.Length; i++)
         {
-            var sceneName = name;   // capture for closure
+            var sceneName = scenes[i];   // capture for closure
             var btn = new Button
             {
-                Content = sceneName,
+                Content = SceneTileContent(sceneName, HotkeyBindings.SceneKey(i)),
                 Tag     = sceneName,
-                Margin  = new Thickness(0, 0, 0, 4),
-                Padding = new Thickness(14, 10, 14, 10),
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Cursor  = System.Windows.Input.Cursors.Hand
+                Margin  = new Thickness(0, 0, 10, 10),
+                Padding = new Thickness(16, 0, 12, 0),
+                Height  = 56,
+                FontSize = 15,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
             ApplySceneStyle(btn, sceneName == _activeSceneName);
             btn.Click += async (_, _) =>
@@ -314,15 +402,60 @@ public partial class LiveControlView : UserControl
                 ApplySceneStyle(b, tag == _activeSceneName);
     }
 
+    /// <summary>Scene name on the left, its global F-key on the right (blank past F8).</summary>
+    private UIElement SceneTileContent(string name, string key)
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.Children.Add(new TextBlock { Text = name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+        if (key.Length > 0)
+        {
+            var chip = new Border { Style = (Style)FindResource("KeyChip"), Margin = new Thickness(8, 0, 0, 0),
+                                    Child = new TextBlock { Text = key, Style = (Style)FindResource("KeyChipText") } };
+            Grid.SetColumn(chip, 1);
+            grid.Children.Add(chip);
+        }
+        return grid;
+    }
+
     private void ApplySceneStyle(Button btn, bool active)
     {
-        btn.Style = (Style)FindResource("SecondaryButton");
+        btn.Style = (Style)FindResource("SceneTile");
+        // Clear rather than set the inactive look: local values outrank the style, so a stale
+        // highlight would otherwise stick to the previous scene after a switch.
         if (active)
         {
-            btn.Background  = new SolidColorBrush(Color.FromArgb(0x40, 0x6B, 0x9E, 0x85));   // UI7: sage tint
-            btn.Foreground  = (Brush)FindResource("AccentLight");
-            btn.BorderBrush = (Brush)FindResource("AccentBorder");
+            btn.SetResourceReference(Control.BackgroundProperty,  "AccentMuted");
+            btn.SetResourceReference(Control.ForegroundProperty,  "AccentLight");
+            btn.SetResourceReference(Control.BorderBrushProperty, "AccentBrush");
+            btn.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                { ShadowDepth = 0, BlurRadius = 18, Opacity = 0.45, Color = (Color)FindResource("AccentColor") };
         }
+        else
+        {
+            btn.ClearValue(Control.BackgroundProperty);
+            btn.ClearValue(Control.ForegroundProperty);
+            btn.ClearValue(Control.BorderBrushProperty);
+            btn.Effect = null;
+        }
+    }
+
+    private void UpdateHotkeyStatus()
+    {
+        bool on = GlobalHotkeyService.Instance.IsActive;
+        HotkeyStatusText.Text = on ? "Global shortcuts on" : "Global shortcuts off";
+        HotkeyStatusText.SetResourceReference(TextBlock.ForegroundProperty, on ? "AccentLight" : "SecondaryText");
+        HotkeyStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, on ? "AccentBrush" : "MutedText");
+        HotkeyStatusChip.SetResourceReference(Border.BackgroundProperty, on ? "AccentMuted" : "InsetBackground");
+        HotkeyStatusChip.SetResourceReference(Border.BorderBrushProperty, on ? "AccentBorder" : "BorderLight");
+    }
+
+    private void SetMicUi(bool micOn)
+    {
+        _micOn = micOn;
+        MicButton.Content = micOn ? "Mic on" : "Mic muted";
+        MicButton.SetResourceReference(Control.ForegroundProperty, micOn ? "PrimaryText" : "DangerBrush");
     }
 
     // ── Audio sliders ────────────────────────────────────────────────────────
@@ -347,13 +480,9 @@ public partial class LiveControlView : UserControl
     // M5: toggle mute in OBS via the auto-detected mic source name
     private async void MicButton_Click(object sender, RoutedEventArgs e)
     {
-        _micOn = !_micOn;
-        MicButton.Content    = _micOn ? "🎙  Mic On" : "🔇  Mic Off";
-        MicButton.Foreground = _micOn
-            ? (Brush)FindResource("SecondaryText")
-            : (Brush)FindResource("DangerBrush");
+        SetMicUi(!_micOn);
 
-        // Mute = NOT _micOn (muted when mic is "off")
+        // Mute = NOT _micOn (muted when mic is "off"); OBS echoes InputMuteStateChanged back.
         if (!string.IsNullOrEmpty(_detectedMicName))
             await _obs.SetInputMuteAsync(_detectedMicName, !_micOn);
     }
@@ -363,7 +492,7 @@ public partial class LiveControlView : UserControl
         // Cam source is a video capture device, not an audio input — no OBS mute API needed.
         // Future: use SetSourceFilterEnabled to toggle a visibility filter on the cam source.
         _camOn = !_camOn;
-        CamButton.Content    = _camOn ? "📷  Cam On" : "🚫  Cam Off";
+        CamButton.Content    = _camOn ? "Cam on" : "Cam off";
         CamButton.Foreground = _camOn
             ? (Brush)FindResource("SecondaryText")
             : (Brush)FindResource("DangerBrush");
@@ -408,7 +537,7 @@ public partial class LiveControlView : UserControl
         MicSilenceWarning.Visibility = silentTooLong ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private static void UpdateMeter(Border track, Border fill, float level)
+    private void UpdateMeter(Border track, Border fill, float level)
     {
         var trackWidth = track.ActualWidth;
         if (trackWidth <= 0) return;
@@ -416,7 +545,7 @@ public partial class LiveControlView : UserControl
         fill.Width = Math.Clamp(level, 0f, 1f) * trackWidth;
         fill.Background = level > 0.9f ? _meterRed
                         : level > 0.6f ? _meterAmber
-                        : _meterGreen;
+                        : MeterOk;
     }
 
     // ── Live Preview ─────────────────────────────────────────────────────────
@@ -565,4 +694,36 @@ public partial class LiveControlView : UserControl
             : $"⚠  {msg}";
         LaunchMessageBorder.Visibility = Visibility.Visible;
     }
+
+#if DEBUG
+    // ── Store screenshot demo (Debug builds only — see Dev/StoreCapture.cs) ──────
+    public void ApplyStoreDemo(ImageSource gameFrame)
+    {
+        _streamTimer.Stop();
+        OBSStatusText.Text = "OBS: Connected ✓";
+        OBSStatusText.SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush");
+        ConnectOBSButton.Content   = "OBS connected";
+        ConnectOBSButton.IsEnabled = false;
+        GoLiveButton.IsEnabled     = true;
+        OfflineBanner.Visibility   = Visibility.Collapsed;
+        PreviewPanel.Visibility    = Visibility.Visible;
+        ApplyPreviewProGate();
+        PreviewImage.Source = gameFrame;
+        PreviewBtn.Content  = "Stop preview";
+
+        _isLive = true;
+        SetLiveUI();
+        LiveBadge.Visibility = Visibility.Visible;
+        _streamTimer.Stop();
+        StreamTimerText.Text = "01:42:18";
+
+        _scenes = ["Starting Soon", "Gameplay", "Just Chatting", "Be Right Back", "Ending", "Webcam Full"];
+        _activeSceneName = "Gameplay";
+        BuildSceneButtons(_scenes);
+
+        UpdateLayout();
+        UpdateMeter(MicMeterTrack, MicMeterFill, 0.58f);
+        UpdateMeter(DesktopMeterTrack, DesktopMeterFill, 0.72f);
+    }
+#endif
 }

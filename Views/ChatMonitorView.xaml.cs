@@ -21,6 +21,7 @@ public class ChatMessage
 
 public partial class ChatMonitorView : UserControl
 {
+    private const int MaxChatMessages = 300;   // keeps the visible backlog bounded
     private readonly ObservableCollection<ChatMessage> _messages = new();
     // Use the shared singleton so AutomationEngine receives the same events
     private readonly TwitchChatService _chat = TwitchChatService.Shared;
@@ -56,6 +57,12 @@ public partial class ChatMonitorView : UserControl
         // Auto-connect if settings are already filled in
         Loaded += async (_, _) =>
         {
+            // Seed from the CURRENT chat state first. Chat now starts at app launch, so
+            // this lazily-created view misses the Connected event and would sit showing
+            // "Connect Twitch" while chat was already live.
+            if (_chat.State == TwitchChatState.Connected)
+                ConnectBanner.Visibility = Visibility.Collapsed;
+
             await TryAutoConnectAsync();
             BuildCommandsList();
         };
@@ -95,6 +102,11 @@ public partial class ChatMonitorView : UserControl
             Message     = msg.Text,
             IsAlert     = msg.IsAlert
         });
+
+        // Cap the backlog. This list was unbounded, so a long stream with busy chat grew
+        // it forever — every message keeping a WPF visual alive. On a 16 GB box also
+        // running a game and OBS, that is a real contributor to the app being killed.
+        while (_messages.Count > MaxChatMessages) _messages.RemoveAt(0);
 
         // Raise alert for subs / raids / bits
         if (msg.IsAlert)

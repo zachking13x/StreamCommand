@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using System.Windows;
 using StreamCommand.Services;
 
@@ -5,9 +7,42 @@ namespace StreamCommand;
 
 public partial class App : Application
 {
+    // Single-instance guard. Nothing stopped a second copy opening, so launching the app
+    // again (or starting a loose build next to the Store one) gave two identical windows
+    // and no way to tell which was which — two chat connections, two sets of global
+    // hotkeys, two OBS clients. The second copy now just raises the first and exits.
+    private const string InstanceMutexName = @"Local\StreamCommand.SingleInstance";
+    private const string ActivateEventName = @"Local\StreamCommand.Activate";
+
+    private Mutex?            _instanceMutex;
+    private EventWaitHandle?  _activateSignal;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        _instanceMutex = new Mutex(initiallyOwned: true, InstanceMutexName, out bool isFirstInstance);
+        if (!isFirstInstance)
+        {
+            // Hand focus to the copy that's already running, then get out of the way.
+            try
+            {
+                if (EventWaitHandle.TryOpenExisting(ActivateEventName, out var existing))
+                {
+                    existing.Set();
+                    existing.Dispose();
+                }
+            }
+            catch { /* the other instance is gone or starting — nothing useful to do */ }
+
+            Shutdown();
+            return;
+        }
+
+#if DEBUG
+        // Debug-only: generate Microsoft Store screenshots + mockups (see Dev/StoreCapture.cs).
+        bool storeCapture = Dev.StoreCapture.TryBegin(e.Args);
+#endif
 
         // Prevent WPF from shutting down when the setup wizard closes.
         // With the default OnLastWindowClose mode, closing the wizard (the only
@@ -30,14 +65,117 @@ public partial class App : Application
 
         var mainWindow = new Views.MainWindow();
 
-        // Restore normal shutdown behaviour before showing MainWindow so the
-        // app exits naturally when the user closes the main window.
-        ShutdownMode = ShutdownMode.OnLastWindowClose;
+        // Exit when the main window closes. OnLastWindowClose never fired: the always-on-top
+        // overlays (alerts, hotkey toast) are windows too, so closing the app left a headless
+        // process running — and its hotkeys still registered.
+        MainWindow   = mainWindow;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
 
         mainWindow.Show();
+
+        StartActivationListener(mainWindow);
+
+#if DEBUG
+        if (storeCapture)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(async () => await Dev.StoreCapture.RunAsync(mainWindow)));
+#endif
 
         // Stream alert overlay — always on top, transparent, fires on StreamEvents.AlertFired
         var overlay = new Views.StreamAlertOverlay();
         overlay.Show();
+    }
+
+    /// <summary>
+    /// <summary>
+    /// Waits for a second launch to signal us and surfaces the existing window instead.
+    ///
+    /// Deliberately gentle: it will NOT drag the window over a full-screen app. Forcing focus
+    /// (the Topmost on/off trick) yanks an exclusive-full-screen game to the desktop, which is
+    /// catastrophic mid-stream — the whole point of this app is that you never leave the game.
+    /// </summary>
+    private void StartActivationListener(Window mainWindow)
+    {
+        _activateSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
+
+        var listener = new Thread(() =>
+        {
+            while (true)
+            {
+                try { if (!_activateSignal.WaitOne()) continue; }
+                catch { return; }   // handle disposed during shutdown
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // Someone is gaming full-screen — leave them alone. The second instance has
+                    // already exited, so nothing is lost by not raising the window.
+                    if (ForegroundAppIsFullScreen()) return;
+
+                    if (mainWindow.WindowState == WindowState.Minimized)
+                        mainWindow.WindowState = WindowState.Normal;
+                    mainWindow.Show();
+                    mainWindow.Activate();   // no Topmost hack — never steal focus by force
+                }));
+            }
+        })
+        { IsBackground = true, Name = "StreamCommand.ActivationListener" };
+
+        listener.Start();
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo info);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect Monitor;
+        public NativeRect Work;
+        public uint Flags;
+    }
+
+    /// <summary>
+    /// True when the foreground window belongs to another process and covers its whole monitor —
+    /// i.e. a full-screen game or video we must not interrupt.
+    /// </summary>
+    private static bool ForegroundAppIsFullScreen()
+    {
+        try
+        {
+            var fg = GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+
+            // Our own windows never count as "don't disturb".
+            foreach (Window w in Application.Current.Windows)
+                if (new System.Windows.Interop.WindowInteropHelper(w).Handle == fg) return false;
+
+            if (!GetWindowRect(fg, out var wr)) return false;
+
+            var mon  = MonitorFromWindow(fg, 2 /* MONITOR_DEFAULTTONEAREST */);
+            var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
+            if (!GetMonitorInfo(mon, ref info)) return false;
+
+            return wr.Left  <= info.Monitor.Left  && wr.Top    <= info.Monitor.Top &&
+                   wr.Right >= info.Monitor.Right && wr.Bottom >= info.Monitor.Bottom;
+        }
+        catch { return false; }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try { _activateSignal?.Dispose(); } catch { }
+        try { _instanceMutex?.ReleaseMutex(); } catch { }
+        try { _instanceMutex?.Dispose(); } catch { }
+        base.OnExit(e);
     }
 }

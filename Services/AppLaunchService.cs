@@ -29,7 +29,12 @@ public static class AppLaunchService
         ]
     };
 
-    public static (bool success, string message) TryLaunch(string appKey)
+    /// <summary>
+    /// Launches a known app. <paramref name="arguments"/> lets the caller pass startup flags —
+    /// used to start OBS straight into the tray when WE opened it, so it never lands on top of
+    /// the game the streamer is playing.
+    /// </summary>
+    public static (bool success, string message) TryLaunch(string appKey, string? arguments = null)
     {
         if (!KnownApps.TryGetValue(appKey, out var paths))
             return (false, "Unknown application.");
@@ -39,7 +44,15 @@ public static class AppLaunchService
             if (!File.Exists(path)) continue;
             try
             {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo(path)
+                {
+                    UseShellExecute  = true,
+                    Arguments        = arguments ?? string.Empty,
+                    // OBS (and the other launchers) resolve locale/, data/ and plugins RELATIVE to
+                    // the working directory. Without this OBS dies on startup with
+                    // "Failed to find locale/en-US.ini" and never opens its WebSocket.
+                    WorkingDirectory = Path.GetDirectoryName(path) ?? string.Empty
+                });
                 return (true, "");
             }
             catch (Exception ex)

@@ -6,8 +6,7 @@ namespace StreamCommand.Services
     public static class LocalCache
     {
         private static readonly string FilePath =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "StreamCommand", "subscription.json");
+            Path.Combine(AppPaths.DataDir, "subscription.json");
 
         public static void SaveProState(string? productId)
         {

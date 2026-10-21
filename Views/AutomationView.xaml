@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:StreamCommand.Models"
              xmlns:local="clr-namespace:StreamCommand.Views"
-             Background="{DynamicResource AppBackground}">
+             Background="Transparent">
 
     <UserControl.Resources>
         <DataTemplate x:Key="RuleTemplate" DataType="{x:Type models:AutomationRule}">
@@ -75,24 +75,21 @@
         </Grid.RowDefinitions>
 
         <!-- ── Header ── -->
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="Automation" Style="{StaticResource SectionHeader}" FontSize="18"/>
-                <TextBlock Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
-                           Text="Rules fire automatically through your connected Twitch Chat Token in real time. Toggle any rule on or off — changes save instantly."/>
-                <!-- Free plan gate — hidden for Pro users (code-behind toggles visibility) -->
-                <local:ProGateBanner x:Name="FreeLimitBanner"
-                                     FeatureLabel="🔒  Unlock unlimited automation — Upgrade to Pro"
-                                     Margin="0,8,0,0"
-                                     Visibility="Collapsed"/>
-            </StackPanel>
-            <Button x:Name="NewRuleButton"
-                    Content="+ New Rule"
-                    Style="{StaticResource PrimaryButton}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Click="NewRule_Click"/>
-        </Grid>
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <Grid Margin="-20,-20,-20,0">
+                <local:HudPageHeader Title="Automation"
+                                 Subtitle="Rules fire automatically in Twitch chat while you play. Toggle any rule on or off — changes save instantly."/>
+                <!-- Kept outside the header: a UserControl's content can't carry x:Name for code-behind -->
+                <Button x:Name="NewRuleButton" Content="+ New Rule" Style="{StaticResource PrimaryButton}"
+                            Height="40" Padding="18,0" FontWeight="Bold" Click="NewRule_Click"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,28,0"/>
+            </Grid>
+            <!-- Free plan gate — hidden for Pro users (code-behind toggles visibility) -->
+            <local:ProGateBanner x:Name="FreeLimitBanner"
+                                 FeatureLabel="🔒  Unlock unlimited automation — Upgrade to Pro"
+                                 Margin="0,16,0,0"
+                                 Visibility="Collapsed"/>
+        </StackPanel>
 
         <!-- ── New / Edit Rule Form (hidden until triggered) ── -->
         <Border x:Name="NewRuleForm"
@@ -174,7 +171,7 @@
                                        FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Border Background="{DynamicResource AccentBrush}" CornerRadius="4"
                                     Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="PRO" Foreground="#0a0e14" FontSize="9" FontWeight="Bold"/>
+                                <TextBlock Text="PRO" Foreground="{DynamicResource ButtonPrimaryFg}" FontSize="9" FontWeight="Bold"/>
                             </Border>
                         </StackPanel>
                         <TextBlock Text="Show follower and sub alerts on your broadcast — celebrate every moment live on screen."

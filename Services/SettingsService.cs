@@ -34,6 +34,14 @@ public class AppSettings
     public string DiscordInvite       { get; set; } = "";
     public string OBSWebSocketPassword{ get; set; } = ""; // leave blank if OBS has no password set
     public int    OBSWebSocketPort    { get; set; } = 4455;
+
+    /// <summary>
+    /// Start OBS automatically when Stream Command needs it. The whole promise of the app is
+    /// "do not open a million apps", so waiting for the user to go launch OBS first defeats it.
+    /// Only ever fires when OBS is NOT already running, so it can never trigger OBS's own
+    /// "OBS is already running" dialog.
+    /// </summary>
+    public bool   AutoLaunchOBS       { get; set; } = true;
     public bool   SetupComplete       { get; set; } = false;
     public List<PlannerEvent>    PlannerEvents    { get; set; } = new();
 
@@ -92,8 +100,8 @@ public class AppSettings
     /// <summary>User-added Growth goals (saved across sessions).</summary>
     public List<GrowthGoal> GrowthGoals { get; set; } = new();
 
-    /// <summary>Hex of the user's chosen accent colour (e.g. "#6B9E85").</summary>
-    public string AccentColor { get; set; } = "#6B9E85";
+    /// <summary>Hex of the user's chosen accent colour (e.g. "#00C9A7").</summary>
+    public string AccentColor { get; set; } = ThemeService.DefaultAccent;
 
     /// <summary>
     /// Developer / beta-tester Pro unlock. When true, bypasses the Microsoft Store
@@ -101,6 +109,12 @@ public class AppSettings
     /// Set via the unlock code field in Settings → About.
     /// </summary>
     public bool DevProUnlock { get; set; } = false;
+
+    /// <summary>System-wide Ctrl+Shift+F-key shortcuts (scenes, mic, go live). On by default.</summary>
+    public bool GlobalHotkeysEnabled { get; set; } = true;
+
+    /// <summary>Modifier shared by every shortcut (HotkeyModifierSet name). Switchable when another app owns a chord.</summary>
+    public string HotkeyModifier { get; set; } = "CtrlShift";
 
     // ── Usage telemetry — conversion moment + re-engagement ──────────────────
     public int       OBSSessionsCompleted     { get; set; } = 0;
@@ -137,11 +151,7 @@ public class AppSettings
 
 public static class SettingsService
 {
-    private static readonly string SettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "StreamCommand",
-        "settings.json"
-    );
+    private static readonly string SettingsPath = Path.Combine(AppPaths.DataDir, "settings.json");
 
     // ── Write-through cache — prevents repeated disk reads on every poll/toggle ─
     private static AppSettings? _cache;
@@ -222,6 +232,7 @@ public static class SettingsService
             YoutubeChannelId     = settings.YoutubeChannelId,
             DiscordInvite        = settings.DiscordInvite,
             OBSWebSocketPort     = settings.OBSWebSocketPort,
+            AutoLaunchOBS        = settings.AutoLaunchOBS,
             SetupComplete        = settings.SetupComplete,
             PlannerEvents           = settings.PlannerEvents,
             AutomationRules         = settings.AutomationRules,
@@ -232,6 +243,8 @@ public static class SettingsService
             GrowthGoals             = settings.GrowthGoals,
             AccentColor             = settings.AccentColor,
             DevProUnlock            = settings.DevProUnlock,
+            GlobalHotkeysEnabled    = settings.GlobalHotkeysEnabled,
+            HotkeyModifier          = settings.HotkeyModifier,
 
             OBSSessionsCompleted     = settings.OBSSessionsCompleted,
             StreamsCompleted         = settings.StreamsCompleted,
