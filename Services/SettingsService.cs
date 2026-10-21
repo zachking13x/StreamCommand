@@ -116,6 +116,20 @@ public class AppSettings
     /// <summary>Modifier shared by every shortcut (HotkeyModifierSet name). Switchable when another app owns a chord.</summary>
     public string HotkeyModifier { get; set; } = "CtrlShift";
 
+    // ── Clips ─────────────────────────────────────────────────────────────────
+    /// <summary>Start a clipping session (OBS records) automatically when the stream goes live.</summary>
+    public bool   ClipWithStream      { get; set; } = true;
+    /// <summary>Mark highlights on its own from chat hype, loud moments and !clip from mods.</summary>
+    public bool   AutoClipEnabled     { get; set; } = true;
+    /// <summary>Keep the full recording after clips are cut. Off = it goes to the Recycle Bin.</summary>
+    public bool   SaveFullStream      { get; set; } = false;
+    public int    ClipPreSeconds      { get; set; } = 25;
+    public int    ClipPostSeconds     { get; set; } = 5;
+    public int    MaxClipsPerStream   { get; set; } = 8;
+    public string ClipLayout          { get; set; } = "FacecamSplit";
+    public string ClipsFolder         { get; set; } = "";   // blank = Videos\Stream Command Clips
+    public string FfmpegPath          { get; set; } = "";   // blank = auto-detect
+
     // ── Usage telemetry — conversion moment + re-engagement ──────────────────
     public int       OBSSessionsCompleted     { get; set; } = 0;
     public int       StreamsCompleted         { get; set; } = 0;
@@ -245,6 +259,15 @@ public static class SettingsService
             DevProUnlock            = settings.DevProUnlock,
             GlobalHotkeysEnabled    = settings.GlobalHotkeysEnabled,
             HotkeyModifier          = settings.HotkeyModifier,
+            ClipWithStream          = settings.ClipWithStream,
+            AutoClipEnabled         = settings.AutoClipEnabled,
+            SaveFullStream          = settings.SaveFullStream,
+            ClipPreSeconds          = settings.ClipPreSeconds,
+            ClipPostSeconds         = settings.ClipPostSeconds,
+            MaxClipsPerStream       = settings.MaxClipsPerStream,
+            ClipLayout              = settings.ClipLayout,
+            ClipsFolder             = settings.ClipsFolder,
+            FfmpegPath              = settings.FfmpegPath,
 
             OBSSessionsCompleted     = settings.OBSSessionsCompleted,
             StreamsCompleted         = settings.StreamsCompleted,

@@ -23,6 +23,11 @@ public static class HotkeyCommands
 
         switch (b.Action)
         {
+            case HotkeyAction.ClipThat:
+                var (headline, detail, warn) = await ClipService.Shared.ClipThatAsync();
+                Say(headline, detail, warn);
+                break;
+
             case HotkeyAction.SwitchScene:
                 var scenes = await Obs.GetScenesAsync();
                 if (b.SceneIndex >= scenes.Length)
@@ -55,5 +60,6 @@ public static class HotkeyCommands
         }
     }
 
-    private static void Say(string headline, string detail, bool warn = false) => Feedback?.Invoke(headline, detail, warn);
+    /// <summary>Shows the in-game toast. Also used by Clips so its notices look like every other shortcut.</summary>
+    public static void Say(string headline, string detail, bool warn = false) => Feedback?.Invoke(headline, detail, warn);
 }

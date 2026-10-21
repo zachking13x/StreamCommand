@@ -332,15 +332,30 @@ public class OBSWebSocketService
         if (IsObsRunning()) return false;   // already up — its WebSocket just isn't reachable
 
         SetState(OBSState.Connecting, "OBS: Starting OBS…");
-        // --minimize-to-tray: WE opened OBS, so it must not land on top of the game. The
-        // WebSocket server runs regardless of window state, so a tray-only OBS still works.
-        // Only applied to the automatic launch — clicking "OBS Studio" yourself opens it normally.
-        var (launched, message) = AppLaunchService.TryLaunch("obs", "--minimize-to-tray");
+
+        // WE opened OBS, so it must not land on top of what the streamer is doing — but a
+        // tray-only OBS was invisible in practice: Windows 11 tucks new tray icons into the ^
+        // overflow, so the only sign OBS was running was Task Manager. So:
+        //  - full-screen game in front → tray (never disturb the game) + a toast saying where it went;
+        //  - otherwise → minimized on the taskbar, where it can be seen and clicked.
+        // Showing a tray-hidden OBS ourselves isn't an option: Qt doesn't repaint a window
+        // un-hidden behind its back (it comes up black), and a second launch starts a second OBS.
+        var (gaming, previousForeground) = System.Windows.Application.Current?.Dispatcher.Invoke(
+            () => (ForegroundWindow.IsOtherAppFullScreen(), ForegroundWindow.Current)) ?? (false, IntPtr.Zero);
+
+        var (launched, message) = gaming
+            ? AppLaunchService.TryLaunch("obs", "--minimize-to-tray")
+            : AppLaunchService.TryLaunch("obs", minimized: true);
         if (!launched)
         {
             SetState(OBSState.Error, $"OBS: {message}");
             return false;
         }
+        if (gaming)
+            HotkeyCommands.Say("OBS started in the background",
+                "It's in the system tray (the ^ next to the clock) and Stream Command is connecting to it.");
+        else
+            _ = HandFocusBackAsync(previousForeground);
 
         // OBS cold-starts slowly; keep retrying until it answers or we give up.
         // OBS cold-start measured at ~42s on this machine, and it is slower on a loaded PC or
@@ -360,6 +375,30 @@ public class OBSWebSocketService
                  "OBS: Started OBS but it never answered. Check OBS for a prompt — and note that "
                + "Safe Mode disables WebSockets. Otherwise enable Tools → WebSocket Server Settings.");
         return false;
+    }
+
+    /// <summary>
+    /// OBS activates its window when it finishes loading, even when started minimized, which
+    /// would leave the streamer's keyboard pointed at a minimized OBS. Once OBS takes the
+    /// foreground, give it back to whatever had it. Windows may refuse; then OBS just stays focused.
+    /// </summary>
+    private static async Task HandFocusBackAsync(IntPtr previous)
+    {
+        if (previous == IntPtr.Zero) return;
+        var deadline = DateTime.UtcNow.AddSeconds(120);   // same budget as the connect wait
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(250);
+            var fgPid = ForegroundWindow.CurrentProcessId();
+            bool obsHasFocus;
+            try { obsHasFocus = fgPid != 0 && System.Diagnostics.Process.GetProcessById((int)fgPid).ProcessName == "obs64"; }
+            catch { obsHasFocus = false; }
+            if (!obsHasFocus) continue;
+
+            await Task.Delay(300);   // OBS may re-activate once more as its docks finish loading
+            ForegroundWindow.TryRestore(previous);
+            return;
+        }
     }
 
     /// <summary>True when an OBS process already exists, whatever state its WebSocket is in.</summary>
@@ -483,6 +522,69 @@ public class OBSWebSocketService
         return (mics.ToArray(), outputs.ToArray());
     }
 
+    // ── Recording (used by Clips) ─────────────────────────────────────────────
+
+    /// <summary>OBS recording started (true) or finished (false, with the file path). Raised on the socket thread.</summary>
+    public event Action<bool, string?>? RecordingStateChanged;
+
+    /// <summary>Whether OBS is recording and how far in, or null when OBS didn't answer.</summary>
+    public async Task<(bool Active, TimeSpan Elapsed)?> GetRecordStatusAsync()
+    {
+        var data = (await SendRequestWithResponseAsync("GetRecordStatus"))?["d"]?["responseData"];
+        if (data is null) return null;
+        var active = data["outputActive"]?.GetValue<bool>() ?? false;
+        var ms     = data["outputDuration"]?.GetValue<double>() ?? 0;
+        return (active, TimeSpan.FromMilliseconds(ms));
+    }
+
+    /// <summary>Starts recording; returns OBS's refusal reason, or null on success.</summary>
+    public async Task<string?> StartRecordAsync()
+    {
+        if (State != OBSState.Connected) return "OBS isn't connected.";
+        var status = (await SendRequestWithResponseAsync("StartRecord"))?["d"]?["requestStatus"];
+        if (status is null) return "OBS didn't answer.";
+        return status["result"]?.GetValue<bool>() == true ? null : status["comment"]?.GetValue<string>() ?? "OBS refused to record.";
+    }
+
+    public async Task StopRecordAsync()
+    {
+        if (State != OBSState.Connected) return;
+        await SendRequestWithResponseAsync("StopRecord");
+    }
+
+    /// <summary>
+    /// Where the webcam sits on the OBS canvas, as 0–1 fractions, or null when the program scene
+    /// has no visible Video Capture Device. Lets the vertical clip put the facecam on top without
+    /// the streamer having to draw a box.
+    /// </summary>
+    public async Task<NormalizedRect?> GetFacecamRectAsync()
+    {
+        if (State != OBSState.Connected) return null;
+        var video  = (await SendRequestWithResponseAsync("GetVideoSettings"))?["d"]?["responseData"];
+        var scene  = (await SendRequestWithResponseAsync("GetCurrentProgramScene"))?["d"]?["responseData"]?["currentProgramSceneName"]?.GetValue<string>();
+        double baseW = video?["baseWidth"]?.GetValue<double>() ?? 0, baseH = video?["baseHeight"]?.GetValue<double>() ?? 0;
+        if (scene is null || baseW <= 0 || baseH <= 0) return null;
+
+        var items = (await SendRequestWithResponseAsync("GetSceneItemList", new { sceneName = scene }))?["d"]?["responseData"]?["sceneItems"]?.AsArray();
+        if (items is null) return null;
+
+        foreach (var item in items)
+        {
+            if (item?["inputKind"]?.GetValue<string>() != "dshow_input") continue;
+            if (item["sceneItemEnabled"]?.GetValue<bool>() == false) continue;
+            var t = item["sceneItemTransform"];
+            if (t is null) continue;
+            var rect = FacecamMath.ToNormalized(
+                t["positionX"]?.GetValue<double>() ?? 0, t["positionY"]?.GetValue<double>() ?? 0,
+                t["width"]?.GetValue<double>() ?? 0,     t["height"]?.GetValue<double>() ?? 0,
+                t["boundsType"]?.GetValue<string>() ?? "OBS_BOUNDS_NONE",
+                t["boundsWidth"]?.GetValue<double>() ?? 0, t["boundsHeight"]?.GetValue<double>() ?? 0,
+                t["alignment"]?.GetValue<int>() ?? 5, baseW, baseH);
+            if (rect is not null) return rect;
+        }
+        return null;
+    }
+
     public async Task DisconnectAsync()
     {
         _userInitiatedDisconnect = true;   // suppress the auto-reconnect loop
@@ -540,6 +642,16 @@ public class OBSWebSocketService
                         var input = msg["d"]?["eventData"]?["inputName"]?.GetValue<string>();
                         var muted = msg["d"]?["eventData"]?["inputMuted"]?.GetValue<bool>();
                         if (input is not null && muted is bool m) InputMuteChanged?.Invoke(input, m);
+                    }
+                    else if (evType == "RecordStateChanged")
+                    {
+                        // Only the settled states matter; STARTING/STOPPING are transitional. The
+                        // STOPPED event carries the finished file path, which clipping cuts from.
+                        var data  = msg["d"]?["eventData"];
+                        var state = data?["outputState"]?.GetValue<string>();
+                        var path  = data?["outputPath"]?.GetValue<string>();
+                        if (state == "OBS_WEBSOCKET_OUTPUT_STARTED")      RecordingStateChanged?.Invoke(true, path);
+                        else if (state == "OBS_WEBSOCKET_OUTPUT_STOPPED") RecordingStateChanged?.Invoke(false, path);
                     }
                     else if (evType == "SceneCreated" || evType == "SceneRemoved" || evType == "SceneNameChanged")
                     {

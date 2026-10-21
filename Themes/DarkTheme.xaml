@@ -113,6 +113,8 @@
     <Geometry x:Key="IconSliders">M4,7 H14 M18,7 H20 M4,17 H8 M12,17 H20 M16,5 A2,2 0 1 1 15.99,5 Z M10,15 A2,2 0 1 1 9.99,15 Z</Geometry>
     <Geometry x:Key="IconHelp">M12,3 A9,9 0 1 1 11.99,3 Z M9.5,9.5 A2.5,2.5 0 1 1 13,11.8 C12.3,12.2 12,12.7 12,13.5 M12,17 V17.01</Geometry>
     <Geometry x:Key="IconSpark">M12,3 L13.8,9.2 L20,11 L13.8,12.8 L12,19 L10.2,12.8 L4,11 L10.2,9.2 Z</Geometry>
+    <!-- Clips: a phone-shaped (vertical) frame with a play triangle -->
+    <Geometry x:Key="IconClip">M8,3 H16 A2,2 0 0 1 18,5 V19 A2,2 0 0 1 16,21 H8 A2,2 0 0 1 6,19 V5 A2,2 0 0 1 8,3 Z M10.5,9 L14.5,12 L10.5,15 Z</Geometry>
     <Geometry x:Key="IconPlug">M9,7 V3 M15,7 V3 M6,7 H18 V11 A6,6 0 0 1 6,11 Z M12,17 V21</Geometry>
     <Geometry x:Key="IconLock">M7,11 H17 A2,2 0 0 1 19,13 V19 A2,2 0 0 1 17,21 H7 A2,2 0 0 1 5,19 V13 A2,2 0 0 1 7,11 Z M8,11 V8 A4,4 0 0 1 16,8 V11 M12,15 V17</Geometry>
     <Geometry x:Key="IconBell">M6,16 V11 A6,6 0 0 1 18,11 V16 L19.5,18 H4.5 Z M10,20.5 A2,2 0 0 0 14,20.5</Geometry>

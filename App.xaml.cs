@@ -109,7 +109,7 @@ public partial class App : Application
                 {
                     // Someone is gaming full-screen — leave them alone. The second instance has
                     // already exited, so nothing is lost by not raising the window.
-                    if (ForegroundAppIsFullScreen()) return;
+                    if (StreamCommand.Services.ForegroundWindow.IsOtherAppFullScreen()) return;
 
                     if (mainWindow.WindowState == WindowState.Minimized)
                         mainWindow.WindowState = WindowState.Normal;
@@ -121,54 +121,6 @@ public partial class App : Application
         { IsBackground = true, Name = "StreamCommand.ActivationListener" };
 
         listener.Start();
-    }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
-    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo info);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct NativeRect { public int Left, Top, Right, Bottom; }
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct MonitorInfo
-    {
-        public int Size;
-        public NativeRect Monitor;
-        public NativeRect Work;
-        public uint Flags;
-    }
-
-    /// <summary>
-    /// True when the foreground window belongs to another process and covers its whole monitor —
-    /// i.e. a full-screen game or video we must not interrupt.
-    /// </summary>
-    private static bool ForegroundAppIsFullScreen()
-    {
-        try
-        {
-            var fg = GetForegroundWindow();
-            if (fg == IntPtr.Zero) return false;
-
-            // Our own windows never count as "don't disturb".
-            foreach (Window w in Application.Current.Windows)
-                if (new System.Windows.Interop.WindowInteropHelper(w).Handle == fg) return false;
-
-            if (!GetWindowRect(fg, out var wr)) return false;
-
-            var mon  = MonitorFromWindow(fg, 2 /* MONITOR_DEFAULTTONEAREST */);
-            var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
-            if (!GetMonitorInfo(mon, ref info)) return false;
-
-            return wr.Left  <= info.Monitor.Left  && wr.Top    <= info.Monitor.Top &&
-                   wr.Right >= info.Monitor.Right && wr.Bottom >= info.Monitor.Bottom;
-        }
-        catch { return false; }
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -1,0 +1,155 @@
+<UserControl x:Class="StreamCommand.Views.ClipsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:StreamCommand.Views"
+             Background="Transparent">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <Grid>
+                <local:HudPageHeader Title="Clips"
+                                     Subtitle="Your best moments, cut into vertical shorts for TikTok and YouTube Shorts"/>
+                <Button Content="Open clips folder" Style="{StaticResource SecondaryButton}" Height="40" Padding="18,0"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,28,0" Click="OpenFolder_Click"/>
+            </Grid>
+
+            <StackPanel Margin="24,20,24,24" MaxWidth="980">
+
+                <!-- Session -->
+                <Border Style="{StaticResource HudCard}" Padding="22,18" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="CLIPPING SESSION" Style="{StaticResource SectionLabel}" HorizontalAlignment="Left"
+                                       Foreground="{DynamicResource PrimaryText}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Ellipse x:Name="StatusDot" Width="10" Height="10" Fill="{DynamicResource MutedText}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="StatusText" Text="Not clipping" Foreground="{DynamicResource PrimaryText}"
+                                           FontSize="20" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ElapsedText" Foreground="{DynamicResource AccentLight}" FontSize="20"
+                                           FontFamily="{DynamicResource CondensedFont}" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DetailText" Foreground="{DynamicResource SecondaryText}" FontSize="13"
+                                       TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Text="Go live and clipping starts by itself, or start it yourself. OBS records while you play; highlights become shorts when you stop."/>
+                            <TextBlock x:Name="MomentsText" Foreground="{DynamicResource MutedText}" FontSize="12"
+                                       TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0">
+                            <Button x:Name="StartStopBtn" Content="Start clipping" Style="{StaticResource PrimaryButton}"
+                                    Height="44" MinWidth="170" FontWeight="Bold" Click="StartStop_Click"/>
+                            <Button x:Name="ClipThatBtn" Content="Clip that" Style="{StaticResource SecondaryButton}"
+                                    Height="40" MinWidth="170" Margin="0,8,0,0" Click="ClipThat_Click"/>
+                            <Border Style="{StaticResource KeyChip}" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F9"/></TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Options -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="How clips are made" Style="{StaticResource SectionHeader}" Margin="0,0,0,14"/>
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Start clipping when I go live" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Off: clipping only runs when you press Start clipping." Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <CheckBox x:Name="ClipWithStreamToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" Click="Option_Changed"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Auto-detect highlights" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Clips chat spikes and hype emotes, moments you get loud, and !clip from your mods or VIPs. Off: only Clip that (and !clip) make clips."
+                                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <CheckBox x:Name="AutoClipToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" Click="Option_Changed"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Save my full stream" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Keeps the whole recording in your OBS recordings folder, and records every stream even with clipping off. Off: the recording goes to the Recycle Bin once its clips are made."
+                                           Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <CheckBox x:Name="SaveFullToggle" Grid.Column="1" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" Click="Option_Changed"/>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="LAYOUT" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="LayoutCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="Option_Changed">
+                                    <ComboBoxItem Tag="FacecamSplit">Facecam on top, gameplay below</ComboBoxItem>
+                                    <ComboBoxItem Tag="BlurFill">Gameplay over a blurred background</ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="CLIP LENGTH" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="LengthCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="Option_Changed">
+                                    <ComboBoxItem Tag="15">20 seconds</ComboBoxItem>
+                                    <ComboBoxItem Tag="25">30 seconds</ComboBoxItem>
+                                    <ComboBoxItem Tag="40">45 seconds</ComboBoxItem>
+                                    <ComboBoxItem Tag="55">60 seconds</ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="MAX CLIPS PER STREAM" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="MaxClipsCombo" Style="{StaticResource ModernComboBox}" SelectionChanged="Option_Changed">
+                                    <ComboBoxItem Tag="5">5</ComboBoxItem>
+                                    <ComboBoxItem Tag="8">8</ComboBoxItem>
+                                    <ComboBoxItem Tag="12">12</ComboBoxItem>
+                                    <ComboBoxItem Tag="20">20</ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="FacecamText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+                        <Border Height="1" Background="{DynamicResource SeparatorBrush}" Margin="0,18,0,16"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="CLIPS FOLDER" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="FolderText" Foreground="{DynamicResource PrimaryText}" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Change…" Style="{StaticResource SecondaryButton}" Padding="14,6" Click="ChangeFolder_Click"/>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="VIDEO ENGINE (FFMPEG)" Style="{StaticResource Label}" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="FfmpegText" Foreground="{DynamicResource PrimaryText}" FontSize="13" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Locate…" Style="{StaticResource SecondaryButton}" Padding="14,6" Click="LocateFfmpeg_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Recent clips -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Recent clips" Style="{StaticResource SectionHeader}" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="NoClipsText" Style="{StaticResource Muted}" TextWrapping="Wrap"
+                                   Text="No clips yet. They show up here after your next clipping session ends."/>
+                        <StackPanel x:Name="ClipList"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,6 +1,6 @@
 namespace StreamCommand.Services;
 
-public enum HotkeyAction { ToggleStream, ToggleMic, SwitchScene }
+public enum HotkeyAction { ToggleStream, ToggleMic, SwitchScene, ClipThat }
 
 /// <summary>The modifier every shortcut shares. Selectable because any fixed chord is already
 /// owned by some other app on some PCs (on the dev box: Ctrl+Shift+F8 and Ctrl+Shift+F12).</summary>
@@ -23,6 +23,7 @@ public static class HotkeyBindings
     public const int MaxScenes = 8;
     public const int MicKey    = 10;   // F10
     public const int StreamKey = 11;   // F11
+    public const int ClipKey   = 9;    // F9: the one F-key left between the scene slots and the mic
 
     public static uint ModifiersFor(HotkeyModifierSet set) => set switch
     {
@@ -50,6 +51,7 @@ public static class HotkeyBindings
             list.Add(new(100 + i, HotkeyAction.SwitchScene, mods, VkF1 + (uint)i, $"{prefix} + F{i + 1}", i));
         list.Add(new(200, HotkeyAction.ToggleMic,    mods, VkF1 + MicKey - 1,    $"{prefix} + F{MicKey}"));
         list.Add(new(201, HotkeyAction.ToggleStream, mods, VkF1 + StreamKey - 1, $"{prefix} + F{StreamKey}"));
+        list.Add(new(202, HotkeyAction.ClipThat,     mods, VkF1 + ClipKey - 1,   $"{prefix} + F{ClipKey}"));
         return list;
     }
 

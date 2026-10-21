@@ -51,6 +51,7 @@ public partial class MainWindow : Window
             ["live-control"] = new Lazy<UserControl>(() => new LiveControlView()),
             ["pre-stream"]   = new Lazy<UserControl>(() => new PreStreamView()),
             ["chat-monitor"] = new Lazy<UserControl>(() => new ChatMonitorView()),
+            ["clips"]        = new Lazy<UserControl>(() => new ClipsView()),
             ["automation"]   = new Lazy<UserControl>(() => new AutomationView()),
             ["planner"]      = new Lazy<UserControl>(() => new PlannerView()),
             ["analytics"]    = new Lazy<UserControl>(() => new AnalyticsView()),
@@ -62,6 +63,10 @@ public partial class MainWindow : Window
         };
 
         AutomationEngine.Instance.ReloadFromSettings();
+
+        // Clips listen for go-live, chat hype and the mic from launch. The Clips page is lazy,
+        // so wiring this there would leave auto-clipping dead until someone opened it.
+        ClipService.Shared.Start();
 
         // Global shortcuts — registered against this window's handle, so they live and die with it.
         _hotkeyToast = new HotkeyToast();

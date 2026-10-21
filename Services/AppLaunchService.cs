@@ -34,7 +34,7 @@ public static class AppLaunchService
     /// used to start OBS straight into the tray when WE opened it, so it never lands on top of
     /// the game the streamer is playing.
     /// </summary>
-    public static (bool success, string message) TryLaunch(string appKey, string? arguments = null)
+    public static (bool success, string message) TryLaunch(string appKey, string? arguments = null, bool minimized = false)
     {
         if (!KnownApps.TryGetValue(appKey, out var paths))
             return (false, "Unknown application.");
@@ -48,6 +48,7 @@ public static class AppLaunchService
                 {
                     UseShellExecute  = true,
                     Arguments        = arguments ?? string.Empty,
+                    WindowStyle      = minimized ? ProcessWindowStyle.Minimized : ProcessWindowStyle.Normal,
                     // OBS (and the other launchers) resolve locale/, data/ and plugins RELATIVE to
                     // the working directory. Without this OBS dies on startup with
                     // "Failed to find locale/en-US.ini" and never opens its WebSocket.

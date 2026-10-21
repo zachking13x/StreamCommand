@@ -289,6 +289,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Border Grid.Row="0" Style="{StaticResource KeyChip}" HorizontalAlignment="Left" Margin="0,0,0,8">
                             <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F1 – F8"/></TextBlock>
@@ -302,6 +303,10 @@
                             <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F11  ×2"/></TextBlock>
                         </Border>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="Go live / end stream" Foreground="{DynamicResource PrimaryText}" FontSize="13" VerticalAlignment="Center"/>
+                        <Border Grid.Row="3" Style="{StaticResource KeyChip}" HorizontalAlignment="Left" Margin="0,8,0,0">
+                            <TextBlock Style="{StaticResource KeyChipText}"><Run Text="{DynamicResource HotkeyPrefix}"/><Run Text=" + F9"/></TextBlock>
+                        </Border>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="Clip that: saves the last few seconds as a short" Foreground="{DynamicResource PrimaryText}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"/>
                     </Grid>
                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                         <TextBlock Text="Modifier keys" Foreground="{DynamicResource SecondaryText}" FontSize="13" VerticalAlignment="Center" Margin="0,0,12,0"/>
