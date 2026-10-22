@@ -171,9 +171,22 @@ Keep the 9 OCR-checked screenshots from 1.0.31
 art (`StoreLogo_720x1080_clean.png`). Everything in 1.0.31 section 7 still applies, including the
 "must NOT be in Partner Center" list.
 
-There is no Clips screenshot yet. If you add one later, OCR it for free / trial / price / $ / Pro /
-upgrade / unlock before uploading (the Clips page wording was already changed so it no longer says
-"free" next to ffmpeg).
+**New for 1.0.32 — real Live Control screenshot with Fortnite in the preview** (1920x1032, above the
+1366x768 minimum). Upload `10-live-control-fortnite-store.png` from this folder, NOT the
+`-original` file: the original shows Fortnite's own "SHOP" / "PASSES" menu and its ESRB box reading
+"In-Game Purchases", which a reviewer could read as this app claiming purchases (policy 10.1.4.3,
+three rejections so far). The store copy has exactly those two areas pixelated. OCR on the original
+did NOT catch "In-Game Purchases" (stylized text), so this was checked by eye.
+
+| # | File | Caption |
+|---|------|---------|
+| 10 | `10-live-control-fortnite-store.png` | See exactly what your viewers see, and go live without leaving your game. |
+
+Remaining risk: it shows Epic's Fortnite artwork. Streaming tools commonly show real games, but if
+cert ever objects to third-party game content, retake it during a match (no menus, no rating box)
+or drop it.
+
+There is no Clips page screenshot yet. If you add one later, check it the same way.
 
 ## 8. Search terms (7 max, 40 chars each)
 
