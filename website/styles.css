@@ -1,0 +1,178 @@
+/* Stream Command site. Colours match the app's teal-on-navy UI so the screenshots sit naturally. */
+:root {
+  --bg: #070A0E;
+  --bg-2: #0B1118;
+  --surface: #0F1720;
+  --surface-2: #142030;
+  --line: #1E2C3A;
+  --text: #EAF1F7;
+  --text-2: #A7B6C5;
+  --text-3: #7C8B9A;
+  --teal: #1DD3B0;
+  --teal-ink: #062A24;
+  --teal-soft: rgba(29, 211, 176, 0.12);
+  --live: #FF4D5E;
+  --radius: 14px;
+  --max: 1180px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Barlow", system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--teal); }
+a:hover { color: #6FE8D0; }
+h1, h2, h3 { font-family: "Barlow Semi Condensed", "Barlow", sans-serif; line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+
+.wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 16px; top: 16px; background: var(--teal); color: var(--teal-ink); padding: 8px 14px; border-radius: 8px; z-index: 10; }
+
+/* Nav */
+.nav { position: sticky; top: 0; z-index: 5; background: rgba(7, 10, 14, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 68px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
+.brand img { width: 36px; height: 36px; }
+.brand span { font-family: "Barlow Semi Condensed", sans-serif; font-weight: 700; font-size: 21px; letter-spacing: 0.01em; }
+.nav-links { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.nav-links a { color: var(--text-2); text-decoration: none; font-weight: 500; font-size: 16px; }
+.nav-links a:hover { color: var(--text); }
+/* .nav-links a outranks .btn-primary, which turned the nav button's label pale teal-on-teal */
+.nav-links a.btn-primary, .nav-links a.btn-primary:hover { color: var(--teal-ink); }
+.show-sm { display: none; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 10px; font-weight: 600; font-size: 17px; text-decoration: none; border: 1px solid transparent; transition: transform .15s ease, background .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--teal); color: var(--teal-ink); }
+.btn-primary:hover { background: #3FE0C1; color: var(--teal-ink); }
+.btn-ghost { border-color: var(--line); color: var(--text); background: var(--surface); }
+.btn-ghost:hover { border-color: var(--teal); color: var(--text); }
+.btn-sm { min-height: 40px; padding: 0 16px; font-size: 15px; }
+.btn svg { width: 20px; height: 20px; flex: none; }
+
+/* Hero */
+.hero { position: relative; overflow: hidden; padding: 84px 0 40px; }
+.hero::before { content: ""; position: absolute; inset: -20% -10% auto 30%; height: 640px; background: radial-gradient(closest-side, rgba(29, 211, 176, 0.16), transparent 70%); pointer-events: none; }
+.hero .wrap { position: relative; display: grid; gap: 56px; }
+.eyebrow { color: var(--teal); font-weight: 600; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 18px; }
+.hero h1 { font-size: clamp(42px, 6.4vw, 76px); font-weight: 700; max-width: 14ch; }
+.hero .lede { margin-top: 22px; font-size: clamp(19px, 2vw, 22px); color: var(--text-2); max-width: 46ch; }
+.hero .actions { margin-top: 34px; display: flex; gap: 14px; flex-wrap: wrap; }
+.hero .note { margin-top: 16px; font-size: 15px; color: var(--text-3); }
+
+@media (min-width: 1100px) {
+  .hero .wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 48px; max-width: 1360px; }
+  .hero h1 { font-size: clamp(44px, 4.4vw, 64px); }
+}
+
+.frame { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(29, 211, 176, 0.06); }
+.frame img { width: 100%; height: auto; }
+
+/* Shortcut strip */
+.keys { padding: 28px 0 8px; }
+.keys .wrap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.key-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.key-row { display: flex; gap: 6px; flex-wrap: wrap; }
+kbd { font-family: "Barlow Semi Condensed", sans-serif; font-size: 16px; font-weight: 600; color: var(--text); background: var(--surface-2); border: 1px solid #2A3B4D; border-bottom-width: 3px; border-radius: 7px; padding: 3px 10px; }
+.key-card p { color: var(--text-2); font-size: 16px; }
+
+/* Sections */
+section { padding: 88px 0; }
+.section-head { max-width: 640px; margin-bottom: 48px; }
+.section-head h2 { font-size: clamp(32px, 4vw, 46px); font-weight: 700; }
+.section-head p { margin-top: 14px; color: var(--text-2); }
+
+.feature { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; padding: 36px 0; }
+.feature.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.feature.flip .feature-text { order: 2; }
+.feature h3 { font-size: clamp(26px, 3vw, 34px); font-weight: 700; }
+.feature p { margin-top: 14px; color: var(--text-2); }
+.feature ul { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.feature li { position: relative; padding-left: 26px; color: var(--text-2); font-size: 17px; }
+.feature li::before { content: ""; position: absolute; left: 4px; top: 11px; width: 8px; height: 8px; border-radius: 2px; background: var(--teal); }
+
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+.card h3 { font-size: 22px; font-weight: 700; }
+.card p { margin-top: 10px; color: var(--text-2); font-size: 16px; }
+.card .icon { width: 42px; height: 42px; border-radius: 10px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; margin-bottom: 18px; }
+.card .icon svg { width: 22px; height: 22px; }
+
+.band { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+.soon { position: relative; overflow: hidden; border: 1px solid rgba(29, 211, 176, 0.35); border-radius: 18px; padding: 40px; background: linear-gradient(135deg, rgba(29, 211, 176, 0.10), rgba(15, 23, 32, 0.6) 55%); display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 40px; align-items: center; }
+.tag { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); background: var(--teal-soft); border: 1px solid rgba(29, 211, 176, 0.3); padding: 4px 10px; border-radius: 6px; margin-bottom: 16px; }
+.soon h2 { font-size: clamp(30px, 3.6vw, 42px); font-weight: 700; }
+.soon p { margin-top: 14px; color: var(--text-2); }
+.phone { justify-self: center; width: 190px; aspect-ratio: 9 / 16; border-radius: 26px; border: 2px solid #2A3B4D; background: #000; display: grid; grid-template-rows: 2fr 3fr; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+.phone .cam { background: radial-gradient(circle at 50% 45%, #2A3B4D 0 22%, #121A24 23%); border-bottom: 2px solid var(--teal); }
+.phone .game { background: linear-gradient(180deg, #1B3A5A 0%, #C77B48 46%, #1A2230 47%, #0B1118 100%); }
+
+.reqs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.reqs .card ul { margin: 12px 0 0; padding-left: 20px; color: var(--text-2); font-size: 16px; display: grid; gap: 8px; }
+
+.cta { text-align: center; }
+.cta h2 { font-size: clamp(34px, 4.6vw, 54px); font-weight: 700; }
+.cta p { margin: 16px auto 0; color: var(--text-2); max-width: 52ch; }
+.cta .actions { margin-top: 32px; display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+/* Text pages */
+.doc { padding: 64px 0 96px; }
+.doc .wrap { max-width: 780px; }
+.doc h1 { font-size: clamp(36px, 5vw, 52px); font-weight: 700; }
+.doc .updated { margin-top: 10px; color: var(--text-3); font-size: 15px; }
+.doc h2 { font-size: 26px; font-weight: 700; margin-top: 44px; }
+.doc p, .doc li { color: var(--text-2); }
+.doc p { margin-top: 14px; }
+.doc ul { margin: 14px 0 0; padding-left: 22px; display: grid; gap: 8px; }
+.doc code { font-size: 15px; background: var(--surface-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; color: var(--text); }
+.faq { margin-top: 24px; display: grid; gap: 12px; }
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px 22px; }
+.faq summary { cursor: pointer; font-weight: 600; color: var(--text); padding: 16px 0; list-style-position: outside; }
+.faq details[open] summary { border-bottom: 1px solid var(--line); }
+.faq details p { margin: 14px 0 18px; }
+
+/* Footer */
+footer { border-top: 1px solid var(--line); padding: 40px 0; color: var(--text-3); font-size: 15px; }
+footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: center; }
+footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+footer a { color: var(--text-2); text-decoration: none; }
+footer a:hover { color: var(--text); }
+footer .legal { flex-basis: 100%; font-size: 14px; }
+
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
+
+@media (max-width: 900px) {
+  .feature, .feature.flip, .soon { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .feature.flip .feature-text { order: 0; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .keys .wrap { grid-template-columns: minmax(0, 1fr); }
+  section { padding: 64px 0; }
+}
+@media (max-width: 640px) {
+  body { font-size: 17px; }
+  .wrap { padding: 0 16px; }
+  .grid, .reqs { grid-template-columns: minmax(0, 1fr); }
+  .nav-links a:not(.btn) { display: none; }
+  .hide-sm { display: none; }
+  .show-sm { display: inline; }
+  .brand span { white-space: nowrap; }
+  .nav .wrap { flex-wrap: nowrap; }
+  .brand span { font-size: 19px; }
+  .hero { padding-top: 52px; }
+  .soon { padding: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn { transition: none; }
+}

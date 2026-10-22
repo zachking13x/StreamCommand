@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support — Stream Command</title>
+  <meta name="description" content="Help with Stream Command: connecting OBS and Twitch, shortcuts, and how to contact the developer.">
+  <meta name="theme-color" content="#070A0E">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Stream Command home">
+        <img src="/favicon.svg" alt="" width="36" height="36">
+        <span>Stream Command</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="/#features">Features</a>
+        <a href="/privacy">Privacy</a>
+        <a class="btn btn-primary btn-sm" href="https://apps.microsoft.com/detail/9PCVKFCX60C1"><span class="hide-sm">Get it from Microsoft Store</span><span class="show-sm">Get the app</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="doc">
+    <div class="wrap">
+      <h1>Support</h1>
+      <p>Stuck on something, found a bug, or have an idea? Email <a href="mailto:zachking13@outlook.com?subject=Stream%20Command%20support">zachking13@outlook.com</a> and include your Windows version and what you were doing when it happened. Stream Command is made by one person, so replies can take a day or two.</p>
+      <p>The app also has a built-in Setup Guide in the sidebar that walks through connecting OBS and Twitch step by step.</p>
+
+      <h2>Common questions</h2>
+      <div class="faq">
+        <details>
+          <summary>Stream Command says OBS is not connected</summary>
+          <p>Make sure OBS Studio 28 or newer is open, then in OBS go to Tools, then WebSocket Server Settings, and tick Enable WebSocket server. Enter the same port and password in Stream Command's Settings. If OBS was started in Safe Mode, its WebSocket server is turned off, so restart OBS normally.</p>
+        </details>
+        <details>
+          <summary>The keyboard shortcuts don't do anything</summary>
+          <p>Another app may already be using the same key combination. Open Settings, Global shortcuts, and pick a different modifier (for example Ctrl+Alt instead of Ctrl+Shift). Shortcuts only control OBS while Stream Command is running and connected.</p>
+        </details>
+        <details>
+          <summary>Go Live didn't start my stream</summary>
+          <p>Going live or ending a stream from the keyboard needs two presses, so a stray key can never start a broadcast. Press the shortcut twice within a few seconds. Also check that OBS has a stream service and key set up in its own Settings.</p>
+        </details>
+        <details>
+          <summary>The live preview is blank</summary>
+          <p>The preview uses OBS Virtual Camera. In OBS, go to Tools and choose Start Virtual Camera (or use the Start Virtual Camera button in the Controls dock).</p>
+        </details>
+        <details>
+          <summary>How do I disconnect my Twitch account?</summary>
+          <p>Revoke Stream Command's access from your Twitch account under Settings, Connections. To also remove the saved sign-in from your PC, close the app and delete the <code>%LocalAppData%\StreamCommand</code> folder.</p>
+        </details>
+        <details>
+          <summary>Where is my data kept?</summary>
+          <p>Only on your PC, in <code>%LocalAppData%\StreamCommand</code>. See the <a href="/privacy">privacy policy</a> for the details.</p>
+        </details>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 Zach King</span>
+      <nav aria-label="Footer">
+        <a href="/support">Support</a>
+        <a href="/privacy">Privacy</a>
+        <a href="https://apps.microsoft.com/detail/9PCVKFCX60C1">Microsoft Store</a>
+      </nav>
+      <p class="legal">Stream Command is an independent app and is not affiliated with or endorsed by OBS Project or Twitch. OBS and Twitch are trademarks of their respective owners.</p>
+    </div>
+  </footer>
+</body>
+</html>
