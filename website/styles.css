@@ -108,6 +108,14 @@ section { padding: 88px 0; }
 .card .icon { width: 42px; height: 42px; border-radius: 10px; background: var(--teal-soft); color: var(--teal); display: grid; place-items: center; margin-bottom: 18px; }
 .card .icon svg { width: 22px; height: 22px; }
 
+.demo { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 56px; align-items: center; }
+.demo h2 { font-size: clamp(32px, 4vw, 46px); font-weight: 700; }
+.demo p { margin-top: 14px; color: var(--text-2); }
+.demo ul { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; color: var(--text-2); }
+.demo-phone { justify-self: center; width: min(340px, 100%); border-radius: 28px; border: 2px solid #2A3B4D; overflow: hidden; background: #000; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 60px rgba(29, 211, 176, 0.12); }
+.demo-phone video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; object-fit: cover; }
+@media (max-width: 900px) { .demo { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+
 .band { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 
 .soon { position: relative; overflow: hidden; border: 1px solid rgba(29, 211, 176, 0.35); border-radius: 18px; padding: 40px; background: linear-gradient(135deg, rgba(29, 211, 176, 0.10), rgba(15, 23, 32, 0.6) 55%); display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 40px; align-items: center; }
